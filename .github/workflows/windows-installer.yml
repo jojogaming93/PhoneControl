@@ -1,0 +1,46 @@
+name: Build Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Installer version (major.minor.patch)
+        required: true
+        default: '1.0.7'
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Regenerate the offline guide
+        run: |
+          python docs/generate_fixtures.py
+          python docs/build.py
+          python scripts/Check-PublicSource.py
+      - name: Build unsigned validation installer (not for public distribution)
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/Build-Installer.ps1 -Version $env:RELEASE_VERSION -AllowUnsigned
+      - name: Verify install, repair, uninstall and retained profiles
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/Test-Installer.ps1 -Installer "artifacts/unsigned-validation/PhoneControl-Setup-$env:RELEASE_VERSION-win-x64.exe"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: PhoneControl-unsigned-validation-x64
+          path: |
+            artifacts/unsigned-validation/PhoneControl-Setup-*.exe
+            artifacts/unsigned-validation/PhoneControl-*-source.zip
+            artifacts/unsigned-validation/*.sha256
+            artifacts/unsigned-validation/*-manifest.json
+            artifacts/installer-test-*/installer-results.txt
+            artifacts/installer-test-*/self-test-results.txt
+            artifacts/installer-test-*/*.log
+          if-no-files-found: error

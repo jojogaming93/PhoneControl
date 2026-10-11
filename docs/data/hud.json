@@ -1,0 +1,463 @@
+{
+  "recorded": "2026-10-03",
+  "width": 2340,
+  "height": 1080,
+  "textureWidth": 1920,
+  "textureHeight": 886,
+  "entries": [
+    {
+      "id": "action-1",
+      "number": 1,
+      "name": "Fire / melee",
+      "x": 0.88,
+      "y": 0.76,
+      "starterKey": "MouseLeft",
+      "savedKey": "MouseLeft",
+      "starterMode": "Hold",
+      "savedMode": "Hold",
+      "status": "Live tested",
+      "note": "Camera moves while fire is held. Rifle HUD tested; other weapon HUDs need calibration.",
+      "logicalId": 10
+    },
+    {
+      "id": "action-2",
+      "number": 2,
+      "name": "Aim down sights",
+      "x": 0.968,
+      "y": 0.53,
+      "starterKey": "MouseRight",
+      "savedKey": "MouseRight",
+      "starterMode": "Tap",
+      "savedMode": "Hold",
+      "status": "Live tested",
+      "note": "128 camera renewals with scope held. Starter Tap and saved Hold describe PC touch duration; game scope behavior may differ.",
+      "logicalId": 11
+    },
+    {
+      "id": "action-3",
+      "number": 3,
+      "name": "Jump",
+      "x": 0.967,
+      "y": 0.707,
+      "starterKey": "Space",
+      "savedKey": "Space",
+      "starterMode": "Hold",
+      "savedMode": "Hold",
+      "status": "Mapped",
+      "note": "Position identified in rifle HUD; every movement/combat context was not separately tested.",
+      "logicalId": 12
+    },
+    {
+      "id": "action-4",
+      "number": 4,
+      "name": "Crouch",
+      "x": 0.875,
+      "y": 0.935,
+      "starterKey": "C",
+      "savedKey": "Ctrl",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Mapped",
+      "note": "Saved key is Ctrl; starter key is C. Do not overwrite a custom layout.",
+      "logicalId": 13
+    },
+    {
+      "id": "action-5",
+      "number": 5,
+      "name": "Dodge / roll",
+      "x": 0.954,
+      "y": 0.907,
+      "starterKey": "Ctrl",
+      "savedKey": "C",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Mapped",
+      "note": "Saved key is C; starter key is Ctrl. Validate in the intended game context.",
+      "logicalId": 14
+    },
+    {
+      "id": "action-6",
+      "number": 6,
+      "name": "Reload",
+      "x": 0.809,
+      "y": 0.935,
+      "starterKey": "R",
+      "savedKey": "R",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Mapped",
+      "note": "HUD point identified. Check ammo before diagnosing a missing shot or reload.",
+      "logicalId": 15
+    },
+    {
+      "id": "action-7",
+      "number": 7,
+      "name": "Interact",
+      "x": 0.647,
+      "y": 0.826,
+      "starterKey": "E",
+      "savedKey": "E",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Contextual",
+      "note": "Prompt depends on nearby objects. Position must be checked when it appears.",
+      "logicalId": 16
+    },
+    {
+      "id": "action-8",
+      "number": 8,
+      "name": "Autorun",
+      "x": 0.744,
+      "y": 0.307,
+      "starterKey": "=",
+      "savedKey": "=",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Live tested",
+      "note": "Two taps toggled the autorun/sprint-lock indicator. Shift sprint uses a different joystick gesture.",
+      "logicalId": 17
+    },
+    {
+      "id": "action-9",
+      "number": 9,
+      "name": "Swap weapon",
+      "x": 0.91,
+      "y": 0.531,
+      "starterKey": "Q",
+      "savedKey": "A",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Mapped",
+      "note": "Saved key A avoids conflict with ZQSD movement; starter key Q.",
+      "logicalId": 18
+    },
+    {
+      "id": "action-10",
+      "number": 10,
+      "name": "Backpack",
+      "x": 0.023,
+      "y": 0.7,
+      "starterKey": "B",
+      "savedKey": "B",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Live tested",
+      "note": "Direct touch and B opened it; a fresh action worked immediately after 128 scoped swipes.",
+      "logicalId": 19
+    },
+    {
+      "id": "action-11",
+      "number": 11,
+      "name": "Map",
+      "x": 0.937,
+      "y": 0.129,
+      "starterKey": "M",
+      "savedKey": "M",
+      "starterMode": "Tap",
+      "savedMode": "Tap",
+      "status": "Mapped",
+      "note": "Minimap point identified. Recheck expanded menus and HUD customization.",
+      "logicalId": 20
+    },
+    {
+      "id": "joystick",
+      "number": 12,
+      "name": "Movement joystick",
+      "x": 0.165,
+      "y": 0.755,
+      "starterKey": "WASD",
+      "savedKey": "ZQSD",
+      "starterMode": "Drag",
+      "savedMode": "Drag",
+      "status": "Live tested",
+      "note": "Normal reach 9% of screen height; verified sprint 18%, later saved 30%. Shift extends the same finger.",
+      "logicalId": 0
+    },
+    {
+      "id": "look",
+      "number": 13,
+      "name": "Camera anchor",
+      "x": 0.61,
+      "y": 0.48,
+      "starterKey": "Mouse + Left Alt",
+      "savedKey": "Mouse + Left Alt",
+      "starterMode": "Swipe",
+      "savedMode": "Swipe",
+      "status": "Live tested",
+      "note": "Raw mouse deltas drive a separate camera finger. Renew within available Android IDs 0â€“9.",
+      "logicalId": 1
+    }
+  ],
+  "profiles": {
+    "starter": {
+      "Name": "Starter layout",
+      "JoystickX": 0.165,
+      "JoystickY": 0.755,
+      "JoystickRadius": 0.09,
+      "SprintKey": "Shift",
+      "SprintRadius": 0.18,
+      "LookX": 0.61,
+      "LookY": 0.48,
+      "Sensitivity": 1.2,
+      "Up": "W",
+      "Down": "S",
+      "Left": "A",
+      "Right": "D",
+      "Bindings": [
+        {
+          "Name": "Fire / melee",
+          "Key": "MouseLeft",
+          "X": 0.88,
+          "Y": 0.76,
+          "Mode": "Hold"
+        },
+        {
+          "Name": "Aim down sights",
+          "Key": "MouseRight",
+          "X": 0.968,
+          "Y": 0.53,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Jump",
+          "Key": "Space",
+          "X": 0.967,
+          "Y": 0.707,
+          "Mode": "Hold"
+        },
+        {
+          "Name": "Crouch",
+          "Key": "C",
+          "X": 0.875,
+          "Y": 0.935,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Dodge / roll",
+          "Key": "Ctrl",
+          "X": 0.954,
+          "Y": 0.907,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Reload",
+          "Key": "R",
+          "X": 0.809,
+          "Y": 0.935,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Interact",
+          "Key": "E",
+          "X": 0.647,
+          "Y": 0.826,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Autorun",
+          "Key": "=",
+          "X": 0.744,
+          "Y": 0.307,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Swap weapon",
+          "Key": "Q",
+          "X": 0.91,
+          "Y": 0.531,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Backpack",
+          "Key": "B",
+          "X": 0.023,
+          "Y": 0.7,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Map",
+          "Key": "M",
+          "X": 0.937,
+          "Y": 0.129,
+          "Mode": "Tap"
+        }
+      ]
+    },
+    "saved": {
+      "Name": "Example layout",
+      "JoystickX": 0.165,
+      "JoystickY": 0.755,
+      "JoystickRadius": 0.09,
+      "SprintKey": "Shift",
+      "SprintRadius": 0.3,
+      "LookX": 0.61,
+      "LookY": 0.48,
+      "Sensitivity": 1.2,
+      "Up": "Z",
+      "Down": "S",
+      "Left": "Q",
+      "Right": "D",
+      "Bindings": [
+        {
+          "Name": "Fire / melee",
+          "Key": "MouseLeft",
+          "X": 0.88,
+          "Y": 0.76,
+          "Mode": "Hold"
+        },
+        {
+          "Name": "Aim down sights",
+          "Key": "MouseRight",
+          "X": 0.968,
+          "Y": 0.53,
+          "Mode": "Hold"
+        },
+        {
+          "Name": "Jump",
+          "Key": "Space",
+          "X": 0.967,
+          "Y": 0.707,
+          "Mode": "Hold"
+        },
+        {
+          "Name": "Crouch",
+          "Key": "Ctrl",
+          "X": 0.875,
+          "Y": 0.935,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Dodge / roll",
+          "Key": "C",
+          "X": 0.954,
+          "Y": 0.907,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Reload",
+          "Key": "R",
+          "X": 0.809,
+          "Y": 0.935,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Interact",
+          "Key": "E",
+          "X": 0.647,
+          "Y": 0.826,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Autorun",
+          "Key": "=",
+          "X": 0.744,
+          "Y": 0.307,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Swap weapon",
+          "Key": "A",
+          "X": 0.91,
+          "Y": 0.531,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Backpack",
+          "Key": "B",
+          "X": 0.023,
+          "Y": 0.7,
+          "Mode": "Tap"
+        },
+        {
+          "Name": "Map",
+          "Key": "M",
+          "X": 0.937,
+          "Y": 0.129,
+          "Mode": "Tap"
+        }
+      ]
+    }
+  },
+  "driving": {
+    "observedDate": "2026-10-11",
+    "fixture": "fixtures/driving.png",
+    "dimmedFixture": "fixtures/dimmed-driving.png",
+    "scope": "Observed example car HUD; other vehicles unknown",
+    "detection": "3 of 4 arrow regions; enter on first match, exit after 2 misses; active mirror checked every 50 ms",
+    "actions": [
+      {
+        "name": "Accelerate",
+        "x": 0.177,
+        "y": 0.506,
+        "savedKey": "Z",
+        "mode": "Hold",
+        "evidence": "Observed live response"
+      },
+      {
+        "name": "Reverse",
+        "x": 0.177,
+        "y": 0.741,
+        "savedKey": "S",
+        "mode": "Hold",
+        "evidence": "Mapped"
+      },
+      {
+        "name": "Steer left",
+        "x": 0.745,
+        "y": 0.679,
+        "savedKey": "Q",
+        "mode": "Hold",
+        "evidence": "Observed live response"
+      },
+      {
+        "name": "Steer right",
+        "x": 0.882,
+        "y": 0.679,
+        "savedKey": "D",
+        "mode": "Hold",
+        "evidence": "Mapped"
+      },
+      {
+        "name": "Boost",
+        "x": 0.087,
+        "y": 0.518,
+        "savedKey": "Shift",
+        "mode": "Hold",
+        "evidence": "Assumed function"
+      },
+      {
+        "name": "Brake",
+        "x": 0.087,
+        "y": 0.703,
+        "savedKey": "Space",
+        "mode": "Hold",
+        "evidence": "Mapped; effect not isolated"
+      },
+      {
+        "name": "Exit vehicle",
+        "x": 0.972,
+        "y": 0.5,
+        "savedKey": "E",
+        "mode": "Tap",
+        "evidence": "Observed label; mapped"
+      },
+      {
+        "name": "Horn",
+        "x": 0.972,
+        "y": 0.644,
+        "savedKey": "H",
+        "mode": "Hold",
+        "evidence": "Observed label; mapped"
+      },
+      {
+        "name": "Headlights",
+        "x": 0.972,
+        "y": 0.79,
+        "savedKey": "L",
+        "mode": "Tap",
+        "evidence": "Observed label; mapped"
+      }
+    ]
+  },
+  "context": "Anonymous landscape HUD coordinates and example layouts"
+}

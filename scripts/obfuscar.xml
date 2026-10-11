@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Obfuscator>
+  <!-- Obfuscate.ps1 fills in absolute paths in a private artifacts directory. -->
+  <Var name="InPath" value="INPUT" />
+  <Var name="OutPath" value="OUTPUT" />
+  <Var name="KeepPublicApi" value="true" />
+  <Var name="HidePrivateApi" value="true" />
+  <Var name="HideStrings" value="true" />
+  <Var name="RenameProperties" value="false" />
+  <Var name="RenameEvents" value="false" />
+  <Var name="SkipGenerated" value="true" />
+  <Var name="RegenerateDebugInfo" value="false" />
+  <Module file="INPUT/PhoneControl.dll">
+    <!-- WinUI/WinRT metadata and JSON contracts must retain their names. -->
+    <SkipNamespace name="PhoneControl.XamlTypeInfo*" />
+    <SkipNamespace name="ABI*" />
+    <SkipNamespace name="WinRT*" />
+    <SkipNamespace name="Microsoft*" />
+    <SkipType name="PhoneControl.App" skipMethods="true" skipFields="true" skipProperties="true" skipEvents="true" skipStringHiding="true" />
+    <SkipType name="PhoneControl.Settings" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Profile" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Binding" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.DrivingLayout" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.DrivingHudDetector/Feature" skipMethods="true" skipFields="true" skipProperties="true" />
+    <!-- P/Invoke metadata retains native entry points independently of managed names.
+         Preserve native layout fields explicitly for inspection and interop. -->
+    <SkipType name="PhoneControl.Native*" skipMethods="true" skipFields="true" />
+    <SkipType name="PhoneControl.MappingOverlay/WindowClass" skipFields="true" />
+    <SkipType name="PhoneControl.MappingOverlay/Paint" skipFields="true" />
+    <SkipType name="PhoneControl.RawInputReader/Device" skipFields="true" />
+    <SkipType name="PhoneControl.MirrorFrameCapture/BitmapInfo" skipFields="true" />
+    <SkipType name="PhoneControl.DrivingDetectionTest/BitmapInfo" skipFields="true" />
+    <SkipType name="PhoneControl.DrivingDetectionTest/Message" skipFields="true" />
+  </Module>
+</Obfuscator>

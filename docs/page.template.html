@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>PhoneControl · Field guide</title><link rel="stylesheet" href="styles.css"><script src="app.js" defer></script></head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<aside class="sidebar">
+  <a class="brand" href="#atlas"><span class="brand-icon">P<span>↗</span></span><span>PHONECONTROL<small>FIELD NOTES / 001</small></span></a>
+  <div class="side-label">THE PHONECONTROL REFERENCE</div>
+  <nav aria-label="Documentation"><a class="atlas-link" href="#atlas" data-route="atlas">HUD explorer <span>↗</span></a><!-- CHAPTER_NAV --><a href="#evidence" data-route="evidence">Evidence notes</a></nav>
+  <div class="side-bottom"><span class="status-dot"></span> Tested on a real handset<p>Account-free public reference<br>USB · 03 October 2026</p><a href="README.md">Markdown entry point ↗</a></div>
+</aside>
+<main id="content">
+  <header class="topbar"><span>PHONECONTROL <span class="muted">/</span> <span id="breadcrumb">HUD explorer</span></span><span class="edition">OBSERVED. TESTED. RECORDED.</span></header>
+  <div class="search-wrap"><label for="search">Search the field guide</label><input id="search" type="search" placeholder="Try “sprint”, “pointer ID”, “scope”…" autocomplete="off"><div id="search-results" hidden aria-live="polite"></div></div>
+  <section id="atlas" class="route-page">
+    <div class="hero"><div><p class="eyebrow">FROM GAMEPLAY TO WORKING INPUT</p><h1>Know the HUD.<br><em>Keep control.</em></h1><p class="intro">Everything we learned while mapping touch controls from Windows: where to touch, how gestures behave, and why long sweeps used to fail.</p></div><div class="hero-note"><span>THE KEY FINDING</span><strong>0–9</strong><p>Keep Android touch IDs within the game's working slots. Rotate a restarted swipe; preserve held fingers.</p><a href="#lessons-learned">Read the debugging story ↗</a></div></div>
+    <div class="metrics"><div><strong>13</strong><span>HUD targets & anchors</span></div><div><strong>128</strong><span>Scoped swipe restarts tested</span></div><div><strong>≈60<span> FPS</span></strong><span>Observed delivered stream</span></div><div><strong>40</strong><span>Windows checks passed</span></div></div>
+    <div class="section-heading"><div><p class="eyebrow">01 / THE TOUCH ATLAS</p><h2>A landscape you can map.</h2></div><label class="profile-control">Layout <select id="profile"><option value="saved">Example · ZQSD</option><option value="starter">Source starter · WASD</option></select></label></div>
+    <p class="atlas-help">Select a marker or an action below. Click an unmarked point for coordinates. This explorer only shows a schematic HUD.</p>
+    <div class="atlas-grid"><div><div id="hud-stage"><img id="hud-image" src="images/hud-schematic.svg" alt="Schematic Reference touch coordinates, without a game screenshot"><div id="markers"></div><div id="crosshair" hidden></div></div><div class="image-caption"><span>SCHEMATIC / 2340 × 1080</span><span id="pick-output" aria-live="polite">Normalized coordinates · top-left origin</span></div><div id="action-list" class="action-list" aria-label="HUD targets"></div></div><aside class="detail-card" id="detail" aria-live="polite"></aside></div>
+    <div class="footnote"><span>SNAPSHOT, NOT A UNIVERSAL LAYOUT</span><p>Weapon, context, game settings and custom HUDs can move controls. The saved sprint reach is 30%; the original live sprint test used 18%. Scope is Hold in the saved profile and Tap in the source starter.</p></div>
+    <div class="section-heading"><div><p class="eyebrow">02 / CARRY THE KNOWLEDGE FORWARD</p><h2>Notes for the next investigation.</h2></div></div>
+    <div class="chapter-cards"><a href="#gameplay"><span>01 / GAME</span><h3>What we actually observed</h3><p>Movement, combat, menus, performance and unanswered questions.</p><b>Read observations ↗</b></a><a href="#technical"><span>02 / ENGINEERING</span><h3>From a mouse to a finger</h3><p>Packets, USB sessions, raw motion, identity and safe cleanup.</p><b>Read the protocol ↗</b></a><a href="#lessons-learned"><span>03 / DEBUGGING</span><h3>The fixes that stayed fixed</h3><p>Failures, rejected approaches and evidence behind the final design.</p><b>Read the lessons ↗</b></a></div>
+  </section>
+  <section id="evidence" class="route-page" hidden><p class="eyebrow">THE INVESTIGATION / EVIDENCE NOTES</p><h1>What the checks establish.</h1><p class="intro">Private game and device screenshots are excluded from public source. The schematic atlas contains only control coordinates. Written findings retain their evidence labels.</p><div class="callout">Historical live observations established sustained camera rotation through 128 swipe restarts with another action held, followed by a new backpack action. These observations remain distinct from current automated tests.</div><p>The public classifier fixtures are generated from four anonymous arrow luminance grids on a plain background. They exercise classification, dimming, decoding, resizing and worker behavior without account UI, chat, inventory, serial numbers or device metadata. They do not establish accuracy across new gameplay scenes.</p><p><a href="#verification">Read the evidence ledger ↗</a> · <a href="generate_fixtures.py">Read the fixture generator ↗</a></p></section>
+  <div id="chapters"><!-- CHAPTERS --></div>
+  <footer><span>PHONECONTROL / FIELD GUIDE</span><span>Evidence recorded 03.10.2026 · <a href="README.md">Markdown sources</a></span></footer>
+</main>
+<noscript><p class="noscript">JavaScript enables navigation and the HUD explorer. All reference material is also available in <a href="README.md">Markdown files</a>.</p></noscript>
+<script id="guide-data" type="application/json">/* EMBEDDED_DATA */</script>
+</body></html>

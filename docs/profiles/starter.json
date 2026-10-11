@@ -1,0 +1,94 @@
+{
+  "Name": "Starter layout",
+  "JoystickX": 0.165,
+  "JoystickY": 0.755,
+  "JoystickRadius": 0.09,
+  "SprintKey": "Shift",
+  "SprintRadius": 0.18,
+  "LookX": 0.61,
+  "LookY": 0.48,
+  "Sensitivity": 1.2,
+  "Up": "W",
+  "Down": "S",
+  "Left": "A",
+  "Right": "D",
+  "Bindings": [
+    {
+      "Name": "Fire / melee",
+      "Key": "MouseLeft",
+      "X": 0.88,
+      "Y": 0.76,
+      "Mode": "Hold"
+    },
+    {
+      "Name": "Aim down sights",
+      "Key": "MouseRight",
+      "X": 0.968,
+      "Y": 0.53,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Jump",
+      "Key": "Space",
+      "X": 0.967,
+      "Y": 0.707,
+      "Mode": "Hold"
+    },
+    {
+      "Name": "Crouch",
+      "Key": "C",
+      "X": 0.875,
+      "Y": 0.935,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Dodge / roll",
+      "Key": "Ctrl",
+      "X": 0.954,
+      "Y": 0.907,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Reload",
+      "Key": "R",
+      "X": 0.809,
+      "Y": 0.935,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Interact",
+      "Key": "E",
+      "X": 0.647,
+      "Y": 0.826,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Autorun",
+      "Key": "=",
+      "X": 0.744,
+      "Y": 0.307,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Swap weapon",
+      "Key": "Q",
+      "X": 0.91,
+      "Y": 0.531,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Backpack",
+      "Key": "B",
+      "X": 0.023,
+      "Y": 0.7,
+      "Mode": "Tap"
+    },
+    {
+      "Name": "Map",
+      "Key": "M",
+      "X": 0.937,
+      "Y": 0.129,
+      "Mode": "Tap"
+    }
+  ]
+}

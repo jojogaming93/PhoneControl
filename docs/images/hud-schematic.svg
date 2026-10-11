@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2340 1080" role="img" aria-label="Schematic touch atlas; no game screenshot">
+<rect width="2340" height="1080" fill="#263b32"/>
+<path d="M0 540H2340M1170 0V1080" stroke="#ffffff" opacity=".08"/>
+<text x="1170" y="420" text-anchor="middle" fill="#c4d4bf" font-family="sans-serif" font-size="42">SCHEMATIC TOUCH ATLAS</text>
+<text x="1170" y="480" text-anchor="middle" fill="#c4d4bf" font-family="sans-serif" font-size="26">Illustrative coordinates; calibrate against your own HUD</text>
+<circle cx="2059" cy="821" r="32" fill="none" stroke="#88a078"><title>Fire / melee</title></circle>
+<circle cx="2265" cy="572" r="32" fill="none" stroke="#88a078"><title>Aim down sights</title></circle>
+<circle cx="2263" cy="764" r="32" fill="none" stroke="#88a078"><title>Jump</title></circle>
+<circle cx="2048" cy="1010" r="32" fill="none" stroke="#88a078"><title>Crouch</title></circle>
+<circle cx="2232" cy="980" r="32" fill="none" stroke="#88a078"><title>Dodge / roll</title></circle>
+<circle cx="1893" cy="1010" r="32" fill="none" stroke="#88a078"><title>Reload</title></circle>
+<circle cx="1514" cy="892" r="32" fill="none" stroke="#88a078"><title>Interact</title></circle>
+<circle cx="1741" cy="332" r="32" fill="none" stroke="#88a078"><title>Autorun</title></circle>
+<circle cx="2129" cy="573" r="32" fill="none" stroke="#88a078"><title>Swap weapon</title></circle>
+<circle cx="54" cy="756" r="32" fill="none" stroke="#88a078"><title>Backpack</title></circle>
+<circle cx="2193" cy="139" r="32" fill="none" stroke="#88a078"><title>Map</title></circle>
+<circle cx="386" cy="815" r="32" fill="none" stroke="#88a078"><title>Movement joystick</title></circle>
+<circle cx="1427" cy="518" r="32" fill="none" stroke="#88a078"><title>Camera anchor</title></circle>
+</svg>
