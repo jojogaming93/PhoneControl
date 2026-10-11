@@ -82,6 +82,8 @@ Alt+Q no longer invokes the renderer's quit shortcut; scrcpy's modifier shortcut
 
 ## Build / publish
 
+GitHub Actions builds/tests the installer and automatically attaches the setup `.exe`, source ZIP, checksum and manifest to a release draft when a version tag (`1.0.8` or `v1.0.8`) is pushed or **Build Windows installer and release** is run manually. Drafts remain unsigned validation builds while trusted signing is pending; they are visible to repository maintainers. See [automatic release guidance](docs/distribution.md#automatic-github-release-drafts).
+
 The .NET 10 SDK is required to build, not to run the published folder. Versions are pinned for reproducibility; stable dependencies can be updated intentionally later.
 
 ```powershell
