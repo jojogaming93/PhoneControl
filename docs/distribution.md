@@ -1,5 +1,13 @@
 # Installation and distribution
 
+## Automatic GitHub release drafts
+
+**Implemented:** `.github/workflows/windows-installer.yml` builds and tests the setup `.exe`, then creates a GitHub release draft containing `PhoneControl-Setup-<version>-win-x64.exe`, its `.sha256`, `PhoneControl-<version>-source.zip` and the build manifest. Installer lifecycle failures prevent the release job from running; diagnostic Actions artifacts remain available. This product uses an EXE installer, not an MSI.
+
+Push a version tag such as `1.0.8` or `v1.0.8`, or choose **Actions → Build Windows installer and release → Run workflow** and enter `1.0.8`. Manual runs use the bare version as the release tag and target the selected source commit. A tag pointing to another commit is rejected. Re-running a version can refresh an existing draft; a published release is never overwritten. The existing published `1.0.7` prerelease is therefore left intact; use a new version for this workflow.
+
+**Signing remains pending:** current builds use `-AllowUnsigned` and releases remain drafts marked as unsigned validation. Draft assets are available to repository maintainers, not public downloads. Automatic public publication requires trusted signing integration. `scripts/New-GitHubRelease.ps1` checks the source commit, version and installer/source hashes before uploading; it uses the workflow's built-in GitHub token with `contents: write` confined to the release job. No personal token or signing credential is required for draft creation.
+
 ## Update 1.0.7 - PhoneControl name
 
 **Implemented:** the product, managed assembly/namespace, source folder, launch script, app/installer names, window titles, documentation and assets now use PhoneControl. The app loads `tools/phonecontrol-control.jar`; only the prebuilt asset filename changed, and its bytes/protocol/allocator are unchanged.
