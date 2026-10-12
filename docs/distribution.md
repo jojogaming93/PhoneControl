@@ -15,7 +15,7 @@ git switch -c release/1.0.8 origin/main
 git push --set-upstream origin release/1.0.8
 ```
 
-`ci.yml` validates public source, reproducible docs/fixtures and release automation on Ubuntu, and publishes the Windows app and runs isolated iPhone protocol checks plus the full Android/iPhone regression suite on Windows. It runs on main, feature, codex and release branch pushes, all pull requests, and manual dispatches. Fork pull requests receive read-only permissions and cannot create releases.
+`ci.yml` validates public source, reproducible docs/fixtures and release automation, publishes the Windows app and runs isolated iPhone protocol checks plus the full Android/iPhone regression suite on Windows. Source generation uses Windows and pinned Python 3.14.3: zlib builds on other platforms can produce different compressed PNG bytes for the same fixture pixels, while the audit requires exact fixture bytes. It runs on main, feature, codex and release branch pushes, all pull requests, and manual dispatches. Fork pull requests receive read-only permissions and cannot create releases.
 
 `release.yml` resolves the version from the branch or tag; `windows-installer.yml` is the shared packaging pipeline. It builds the obfuscated app, runs its regression suite, builds the EXE installer, and tests install, repair, uninstall and profile retention before a separate job can upload a release. Any required failure blocks that upload. Diagnostic Actions artifacts include staging self-test results even if installer compilation was never reached. Local automation checks use mocked Git/GitHub commands and do not mutate remote resources.
 
