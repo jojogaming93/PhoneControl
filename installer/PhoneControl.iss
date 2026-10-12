@@ -10,16 +10,25 @@
 #ifndef AppVersion
   #define AppVersion "1.0.7"
 #endif
+#ifndef NumericVersion
+  #error NumericVersion is required
+#endif
+#ifndef ProductName
+  #error ProductName is required
+#endif
+#ifndef ProductAppId
+  #error ProductAppId is required
+#endif
 
 [Setup]
-AppId={{CF1762E2-784A-49DA-AF70-A6753131BE40}
-AppName=PhoneControl
+AppId={#ProductAppId}
+AppName={#ProductName}
 AppVersion={#AppVersion}
 AppPublisher=jojogaming93
 AppPublisherURL=https://github.com/jojogaming93
 AppSupportURL=https://github.com/jojogaming93/PhoneControl/issues
-DefaultDirName={localappdata}\Programs\PhoneControl
-DefaultGroupName=PhoneControl
+DefaultDirName={localappdata}\Programs\{#ProductName}
+DefaultGroupName={#ProductName}
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
@@ -41,8 +50,8 @@ CloseApplications=yes
 CloseApplicationsFilter=PhoneControl.exe
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion={#AppVersion}.0
-VersionInfoDescription=PhoneControl Windows installer
+VersionInfoVersion={#NumericVersion}
+VersionInfoDescription={#ProductName} Windows installer
 VersionInfoCopyright=Copyright (c) 2026 jojogaming93
 
 [InstallDelete]
@@ -57,9 +66,9 @@ Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 #include ToolEntries
 
 [Icons]
-Name: "{autoprograms}\PhoneControl"; Filename: "{app}\PhoneControl.exe"; WorkingDir: "{app}"; Check: ShouldCreateShortcuts
-Name: "{autoprograms}\PhoneControl guide"; Filename: "{app}\docs\index.html"; Check: ShouldCreateShortcuts
-Name: "{autodesktop}\PhoneControl"; Filename: "{app}\PhoneControl.exe"; WorkingDir: "{app}"; Check: ShouldCreateShortcuts
+Name: "{autoprograms}\{#ProductName}"; Filename: "{app}\PhoneControl.exe"; WorkingDir: "{app}"; Check: ShouldCreateShortcuts
+Name: "{autoprograms}\{#ProductName} guide"; Filename: "{app}\docs\index.html"; Check: ShouldCreateShortcuts
+Name: "{autodesktop}\{#ProductName}"; Filename: "{app}\PhoneControl.exe"; WorkingDir: "{app}"; Check: ShouldCreateShortcuts
 
 [Run]
 Filename: "{app}\PhoneControl.exe"; Description: "Open PhoneControl"; Flags: nowait; Check: ShouldLaunch

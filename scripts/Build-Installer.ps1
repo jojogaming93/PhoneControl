@@ -1,10 +1,11 @@
 # Copyright (c) 2026 jojogaming93
 # SPDX-License-Identifier: AGPL-3.0-only
 
-param([string]$Version = '1.0.7')
+param([string]$Version, [string]$SourceBranch)
 $ErrorActionPreference = 'Stop'
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be major.minor.patch.' }
 $projectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $Version) { [xml]$configuration = Get-Content (Join-Path $projectRoot 'version.props') -Raw; $Version = [string]$configuration.Project.PropertyGroup.VersionPrefix }
+$identity = & (Join-Path $PSScriptRoot 'Get-ReleaseIdentity.ps1') -Version $Version
 $compiler = Join-Path $projectRoot 'tools\inno\ISCC.exe'
 $compilerHash = 'D06EBD38F38E3CEE60A3C50CC45BD449D77E0BC6A5CABC607EA9886808E4DE1A'
 if (-not (Test-Path -LiteralPath $compiler)) {
@@ -40,7 +41,7 @@ $toolLines = Get-ChildItem -LiteralPath (Join-Path $staging 'tools\scrcpy') -Fil
     'Source: "{0}"; DestDir: "{{app}}\tools\scrcpy"; Flags: ignoreversion; Check: ShouldUpdateTool(''{1}'', ''{2}'')' -f $_.FullName, $_.Name.Replace("'", "''"), $toolHash
 }
 [IO.File]::WriteAllLines($toolEntries, [string[]]$toolLines)
-& $compiler ("/DPayloadDir=$staging") ("/DReleaseDir=$release") ("/DToolEntries=$toolEntries") ("/DAppVersion=$Version") (Join-Path $projectRoot 'installer\PhoneControl.iss')
+& $compiler ("/DPayloadDir=$staging") ("/DReleaseDir=$release") ("/DToolEntries=$toolEntries") ("/DAppVersion=$Version") ("/DNumericVersion=$($identity.NumericVersion)") ("/DProductName=$($identity.ProductName)") ("/DProductAppId=$($identity.AppId.Replace('{', '{{'))") (Join-Path $projectRoot 'installer\PhoneControl.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
 $payloadInstaller = Join-Path $release "PhoneControl-Payload-$Version-win-x64.exe"
 $installer = Join-Path $release "PhoneControl-Setup-$Version-win-x64.exe"
@@ -53,5 +54,5 @@ $payload = Get-ChildItem -LiteralPath $staging -Recurse -File | Where-Object { $
 $commit = & git -C $projectRoot rev-parse --verify HEAD 2>$null
 if ($LASTEXITCODE -ne 0) { $commit = $null }
 $dirty = [bool](& git -C $projectRoot status --porcelain)
-[ordered]@{ version=$Version; license='AGPL-3.0-only'; copyrightOwner='jojogaming93'; builtUtc=[DateTime]::UtcNow.ToString('o'); sourceCommit=$commit; sourceDirty=$dirty; sourceArchive=[IO.Path]::GetFileName($sourceArchive); sourceArchiveSha256=(Get-FileHash -LiteralPath $sourceArchive).Hash.ToLowerInvariant(); architecture='x64'; minimumWindowsBuild=26100; obfuscated=$true; installerSha256=$hash; payload=@($payload) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $release "PhoneControl-$Version-manifest.json") -Encoding UTF8
+[ordered]@{ version=$Version; channel=$identity.Channel; sourceBranch=$SourceBranch; numericVersion=$identity.NumericVersion; appId=$identity.AppId; productName=$identity.ProductName; license='AGPL-3.0-only'; copyrightOwner='jojogaming93'; builtUtc=[DateTime]::UtcNow.ToString('o'); sourceCommit=$commit; sourceDirty=$dirty; sourceArchive=[IO.Path]::GetFileName($sourceArchive); sourceArchiveSha256=(Get-FileHash -LiteralPath $sourceArchive).Hash.ToLowerInvariant(); architecture='x64'; minimumWindowsBuild=26100; obfuscated=$true; installerSha256=$hash; payload=@($payload) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $release "PhoneControl-$Version-manifest.json") -Encoding UTF8
 Write-Output "Installer: $installer"

@@ -1,6 +1,6 @@
 # Maintenance and agent workflow
 
-**Current naming/version:** PhoneControl 1.0.7. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings.
+**Version:** published Stable is 1.0.7; the next target in `version.props` is 1.1.0. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings. Preview has an independent identity and does not migrate Stable settings.
 
 ## Source map
 
@@ -67,7 +67,7 @@ scrcpy protocol/server versions are intentionally pinned. Updating only the rend
 
 ## Release maintenance
 
-Use `feature/*` for development and `release/<major.minor.patch>` for stabilization. [Distribution and pipelines](distribution.md) describes starting a release from main, automated draft creation, validation gates and merging fixes back. Run `./scripts/Test-ReleaseAutomation.ps1` locally to verify version parsing, draft refreshes, immutable releases, source checksums and superseded-build behavior with mocked Git/GitHub commands. Workflow scripts are included in the corresponding source archive. Workflow availability on main requires merging their changes there first.
+Use `feature/*` for alpha installers, `main` for beta installers and `release/<major.minor.patch>` for RC installers. An explicit stable version tag publishes the stable installer. `version.props` holds the next target version (currently 1.1.0). [Distribution and pipelines](distribution.md) describes automation, separate Stable/Preview installs, acceptance gates and retention. Run `./scripts/Test-ReleaseAutomation.ps1` locally to verify version generation, publication, immutable assets, source checksums and bounded cleanup with mocked Git/GitHub commands. `Test-Installer.ps1` now requires `-Version` to select the right product identity. Workflow scripts and `version.props` are included in the source archive. Workflow availability on main requires merging their changes there first.
 
 ## Documentation workflow
 

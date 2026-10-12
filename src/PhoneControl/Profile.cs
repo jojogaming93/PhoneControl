@@ -195,7 +195,7 @@ public sealed class Settings
     public bool Audio { get; set; } = true;
     public Profile Profile { get; set; } = Profile.Starter();
     public string GameplayMode { get; set; } = "Auto";
-    public static string DirectoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PhoneControl");
+    public static string DirectoryPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppInfo.DataDirectoryName);
     public static string FilePath => Path.Combine(DirectoryPath, "settings.json");
     internal static bool ImportSettingsIfMissing(string previousDirectory, string destinationDirectory)
     {
@@ -209,7 +209,7 @@ public sealed class Settings
     public static Settings Load()
     {
         try {
-            if (!File.Exists(FilePath)) {
+            if (!AppInfo.IsPreview && !File.Exists(FilePath)) {
                 // The stable installer identity locates settings from a previous
                 // product name without keeping obsolete branding in the app.
                 using var registration = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(

@@ -19,6 +19,14 @@ public static class SelfTest
             bool rejected = false; try { action(); } catch (InvalidDataException) { rejected = true; } Check(rejected, name);
         }
         try {
+            bool previewVersion = AppInfo.Version.Contains('-');
+            Check(AppInfo.IsPreview == previewVersion && AppInfo.Channel is "stable" or "alpha" or "beta" or "rc",
+                "Release channel metadata matches the displayed stable or preview version");
+            string expectedDirectory = previewVersion ? "PhoneControl Preview" : "PhoneControl";
+            Check(Path.GetFileName(Settings.DirectoryPath) == expectedDirectory &&
+                Path.GetDirectoryName(Log.PathName) == Settings.DirectoryPath &&
+                AppInfo.InstanceName == (previewVersion ? "PhoneControl-Preview" : "PhoneControl"),
+                "Stable and Preview use separate settings, logs and instance identities");
             IosBackendTest.Run(Check).GetAwaiter().GetResult();
             if (iosOnly) {
                 results.Add($"{results.Count} iPhone protocol checks passed (synthetic server; no real iOS device).");

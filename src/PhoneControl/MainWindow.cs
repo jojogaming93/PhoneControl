@@ -53,7 +53,7 @@ public sealed class MainWindow : Window
         selectedBackend = backends.FirstOrDefault(b => b.Key == settings.PhoneBackend) ?? backends[0];
         backend = selectedBackend.Create(settings.IPhoneEndpoint);
         settings.Profile.EnsureDrivingLayout();
-        Title = "PhoneControl";
+        Title = AppInfo.ProductName;
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "assets", "phonecontrol.ico"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1180, 880));
         SystemBackdrop = new MicaBackdrop();
@@ -65,7 +65,7 @@ public sealed class MainWindow : Window
             Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "assets", "phonecontrol-logo.png"))),
             Width = 88, Height = 88, HorizontalAlignment = HorizontalAlignment.Left
         });
-        side.Children.Add(Text("PhoneControl", 25, true));
+        side.Children.Add(Text(AppInfo.ProductName, 25, true));
         side.Children.Add(Text("Your phone. Your controls.", 13));
         side.Children.Add(new Border { Height = 20 });
         foreach (var item in new[] { ("◉  Connection", 0), ("⌘  Controls", 1), ("⚙  Stream settings", 2), ("≡  Diagnostics", 3), ("ⓘ  About & license", 4) }) {
@@ -77,7 +77,7 @@ public sealed class MainWindow : Window
         side.Children.Add(status); side.Children.Add(stats);
         side.Children.Add(shortcuts);
         side.Children.Add(new Border { Height = 32 });
-        side.Children.Add(Text($"PhoneControl v{AppInfo.Version}", 13, true));
+        side.Children.Add(Text($"{AppInfo.ProductName} v{AppInfo.Version}", 13, true));
         side.Children.Add(Text(AppInfo.Copyright, 11));
         side.Children.Add(Text("Open source · GNU AGPLv3\nWinUI 3 · .NET 10\nAndroid USB · experimental iPhone", 11));
         root.Children.Add(side);
@@ -472,11 +472,11 @@ public sealed class MainWindow : Window
         var trace = new ToggleSwitch { Header = "Log injected touch press/release events", IsOn = Log.TraceTouches };
         trace.Toggled += (_, _) => Log.TraceTouches = trace.IsOn; body.Children.Add(trace);
         body.Children.Add(diagnostics);
-        body.Children.Add(Text("Logs and profiles stay in %LOCALAPPDATA%\\PhoneControl. No account, license key, subscription, or network service is required for gameplay.", 12));
+        body.Children.Add(Text($"Logs and profiles stay in %LOCALAPPDATA%\\{AppInfo.DataDirectoryName}. No account, license key, subscription, or network service is required for gameplay.", 12));
     }
     private void AboutPage()
     {
-        Heading("About PhoneControl", $"Version {AppInfo.Version}");
+        Heading($"About {AppInfo.ProductName}", $"Version {AppInfo.Version} · {AppInfo.Channel}");
         var ownership = new StackPanel { Spacing = 12 };
         ownership.Children.Add(Text(AppInfo.Copyright, 20, true));
         ownership.Children.Add(new HyperlinkButton { Content = "GitHub: jojogaming93", NavigateUri = new Uri("https://github.com/jojogaming93") });

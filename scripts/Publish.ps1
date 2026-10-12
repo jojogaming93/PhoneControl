@@ -1,15 +1,16 @@
 # Copyright (c) 2026 jojogaming93
 # SPDX-License-Identifier: AGPL-3.0-only
 
-param([switch]$DesktopShortcut, [string]$OutputDirectory, [string]$Version = '1.0.7', [switch]$Obfuscate)
+param([switch]$DesktopShortcut, [string]$OutputDirectory, [string]$Version, [switch]$Obfuscate)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $Version) { [xml]$configuration = Get-Content (Join-Path $projectRoot 'version.props') -Raw; $Version = [string]$configuration.Project.PropertyGroup.VersionPrefix }
+$identity = & (Join-Path $PSScriptRoot 'Get-ReleaseIdentity.ps1') -Version $Version
 & python (Join-Path $PSScriptRoot 'Check-PublicSource.py')
 if ($LASTEXITCODE -ne 0) { throw 'Public source privacy check failed.' }
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $projectRoot 'artifacts\PhoneControl' }
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $projectRoot "artifacts\$($identity.ProductName)" }
 $outputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version must be major.minor.patch.' }
-& dotnet publish (Join-Path $projectRoot 'src\PhoneControl\PhoneControl.csproj') -c Release -o $outputDirectory "-p:Version=$Version"
+& dotnet publish (Join-Path $projectRoot 'src\PhoneControl\PhoneControl.csproj') -c Release -o $outputDirectory "-p:Version=$Version" "-p:FileVersion=$($identity.NumericVersion)" "-p:AssemblyVersion=$($identity.AssemblyVersion)" "-p:ReleaseChannel=$($identity.Channel)"
 if ($LASTEXITCODE -ne 0) { throw 'Publishing failed.' }
 $scrcpyDirectory = Join-Path $projectRoot 'tools\scrcpy'
 if (-not (Test-Path -LiteralPath (Join-Path $scrcpyDirectory 'scrcpy.exe'))) { throw 'Run Install-Dependencies.ps1 first.' }
@@ -39,7 +40,7 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'server\PointersState.java'), (Jo
 if ($Obfuscate) { & (Join-Path $PSScriptRoot 'Obfuscate.ps1') -InputDirectory $outputDirectory }
 & (Join-Path $PSScriptRoot 'Build-SourceArchive.ps1') -OutputFile (Join-Path $outputDirectory 'source\PhoneControl-source.zip') -Version $Version
 if ($DesktopShortcut) {
-    $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'PhoneControl.lnk'
+    $shortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) "$($identity.ProductName).lnk"
     $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcutPath)
     $shortcut.TargetPath = Join-Path $outputDirectory 'PhoneControl.exe'
     $shortcut.WorkingDirectory = $outputDirectory
