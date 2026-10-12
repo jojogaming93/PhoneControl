@@ -3,6 +3,7 @@
 
 param([Parameter(Mandatory)][string]$Payload, [Parameter(Mandatory)][string]$Output, [Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = 'Stop'
+$identity = & (Join-Path $PSScriptRoot 'Get-ReleaseIdentity.ps1') -Version $Version
 $root = Split-Path -Parent $PSScriptRoot
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -16,7 +17,7 @@ New-Item -ItemType Directory -Path $work | Out-Null
 $escapedPayload = [IO.Path]::GetFullPath($Payload).Replace('\','\\').Replace('"','\"')
 $escapedManifest = (Join-Path $root 'installer\bootstrap.manifest').Replace('\','\\')
 $escapedIcon = (Join-Path $root 'assets\branding\phonecontrol.ico').Replace('\','\\')
-$numbers = $Version.Replace('.',',') + ',0'
+$numbers = $identity.NumericVersion.Replace('.',',')
 $resource = @"
 #include <windows.h>
 101 RCDATA "$escapedPayload"
@@ -34,9 +35,9 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "jojogaming93\0"
       VALUE "LegalCopyright", "Copyright (c) 2026 jojogaming93\0"
-      VALUE "FileDescription", "PhoneControl Windows installer\0"
+      VALUE "FileDescription", "$($identity.ProductName) Windows installer\0"
       VALUE "FileVersion", "$Version\0"
-      VALUE "ProductName", "PhoneControl\0"
+      VALUE "ProductName", "$($identity.ProductName)\0"
       VALUE "ProductVersion", "$Version\0"
     END
   END

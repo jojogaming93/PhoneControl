@@ -1,12 +1,16 @@
 # Copyright (c) 2026 jojogaming93
 # SPDX-License-Identifier: AGPL-3.0-only
 
-param([string]$Installer)
+param([string]$Installer, [Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-if (-not $Installer) { $Installer = Join-Path $projectRoot 'artifacts\releases\PhoneControl-Setup-1.0.7-win-x64.exe' }
+$identity = & (Join-Path $PSScriptRoot 'Get-ReleaseIdentity.ps1') -Version $Version
+if (-not $Installer) { $Installer = Join-Path $projectRoot "artifacts\releases\PhoneControl-Setup-$Version-win-x64.exe" }
 $Installer = [IO.Path]::GetFullPath($Installer)
-$key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{CF1762E2-784A-49DA-AF70-A6753131BE40}_is1'
+$key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$($identity.AppId)_is1"
+$otherId = if ($identity.IsPreview) { '{CF1762E2-784A-49DA-AF70-A6753131BE40}' } else { '{0F3B2360-8C37-4C30-8FA5-2A697FDC8836}' }
+$otherKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$otherId`_is1"
+$otherRegistration = if (Test-Path -LiteralPath $otherKey) { Get-ItemProperty -LiteralPath $otherKey | ConvertTo-Json -Depth 5 -Compress } else { $null }
 if (Test-Path -LiteralPath $key) { throw 'PhoneControl is already installed. Use a disposable Windows account/VM for installer lifecycle tests.' }
 $testRoot = Join-Path $projectRoot ('artifacts\installer-test-' + [Guid]::NewGuid().ToString('N'))
 $target = [IO.Path]::GetFullPath((Join-Path $testRoot 'app'))
@@ -14,11 +18,22 @@ $target = [IO.Path]::GetFullPath((Join-Path $testRoot 'app'))
 $boundary = [IO.Path]::GetFullPath((Join-Path $projectRoot 'artifacts')) + [IO.Path]::DirectorySeparatorChar
 if (-not $target.StartsWith($boundary, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe installer test target.' }
 New-Item -ItemType Directory -Path $testRoot | Out-Null
-$profile = Join-Path $env:LOCALAPPDATA 'PhoneControl\settings.json'
-$originalProfileHash = if (Test-Path -LiteralPath $profile) { (Get-FileHash -LiteralPath $profile).Hash } else { $null }
+$profiles = @('PhoneControl','PhoneControl Preview') | ForEach-Object {
+    $path = Join-Path $env:LOCALAPPDATA "$_\settings.json"
+    $created = -not (Test-Path -LiteralPath $path)
+    if ($created) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
+        @{ AutoConnect=$false; Profile=@{ Name="Retained $_ mapping"; Sensitivity=2.7 } } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $path -Encoding utf8
+    }
+    [pscustomobject]@{ Path=$path; Hash=(Get-FileHash -LiteralPath $path).Hash; Created=$created }
+}
 function Assert-ProfilePreserved {
-    $current = if (Test-Path -LiteralPath $profile) { (Get-FileHash -LiteralPath $profile).Hash } else { $null }
-    if ($current -ne $originalProfileHash) { throw 'Installer changed the saved user profile.' }
+    foreach ($profile in $profiles) {
+        $current = if (Test-Path -LiteralPath $profile.Path) { (Get-FileHash -LiteralPath $profile.Path).Hash } else { $null }
+        if ($current -ne $profile.Hash) { throw 'Installer changed Stable or Preview settings.' }
+    }
+    $currentRegistration = if (Test-Path -LiteralPath $otherKey) { Get-ItemProperty -LiteralPath $otherKey | ConvertTo-Json -Depth 5 -Compress } else { $null }
+    if ($currentRegistration -ne $otherRegistration) { throw 'Installer changed the other channel registration.' }
 }
 function Install-TestPayload([string]$LogName) {
     $arguments = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOLAUNCH','/NOSHORTCUTS',('/DIR="' + $target + '"'),('/LOG="' + (Join-Path $testRoot $LogName) + '"'))
@@ -27,6 +42,8 @@ function Install-TestPayload([string]$LogName) {
     if (-not (Test-Path -LiteralPath (Join-Path $target 'unins000.exe'))) { throw 'Uninstaller was not registered.' }
     if ((Get-ItemProperty -LiteralPath $key).InstallLocation.TrimEnd('\') -ne $target) { throw 'Unexpected installation registration.' }
     Assert-ProfilePreserved
+    $metadata = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $target 'PhoneControl.dll'))
+    if (($metadata.ProductVersion -split '\+')[0] -ne $Version -or $metadata.FileVersion -ne $identity.NumericVersion) { throw 'Installed application version metadata does not match the release.' }
 }
 try {
     Install-TestPayload 'install.log'
@@ -62,6 +79,12 @@ try {
         if (Test-Path -LiteralPath (Join-Path $target 'PhoneControl.exe')) { throw 'Uninstall left the app executable behind.' }
         Assert-ProfilePreserved
         'PASS uninstall and profile preservation' | Add-Content (Join-Path $testRoot 'installer-results.txt')
+    }
+    # Remove only synthetic profiles this invocation created, after checking their hash.
+    foreach ($profile in $profiles | Where-Object Created) {
+        if ((Test-Path -LiteralPath $profile.Path) -and (Get-FileHash -LiteralPath $profile.Path).Hash -eq $profile.Hash) {
+            Remove-Item -LiteralPath $profile.Path
+        }
     }
 }
 Write-Output "Installer lifecycle passed. Evidence: $testRoot"

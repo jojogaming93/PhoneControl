@@ -19,7 +19,7 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-ROOT_FILES = {'.gitignore', '.gitattributes', 'AGENTS.md', 'global.json', 'LICENSE',
+ROOT_FILES = {'.gitignore', '.gitattributes', 'AGENTS.md', 'global.json', 'version.props', 'LICENSE',
               'README.md', 'THIRD-PARTY-NOTICES.md', 'VALIDATION.md', 'SOURCE.md',
               'PUBLIC-RELEASE.md', 'Install-Dependencies.ps1', 'Launch-PhoneControl.ps1'}
 ROOTS = {'src', 'server', 'scripts', 'installer', 'assets', 'docs', '.github'}

@@ -17,12 +17,13 @@ public static class Program
             return;
         }
         string user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
-        using var instance = new Mutex(true, "Local\\PhoneControl-" + user, out bool firstInstance);
+        using var instance = new Mutex(true, "Local\\" + AppInfo.InstanceName + "-" + user, out bool firstInstance);
         if (!firstInstance) {
             foreach (var process in System.Diagnostics.Process.GetProcessesByName("PhoneControl")) {
                 using (process) {
                     try {
                         if (process.Id == Environment.ProcessId || process.MainWindowHandle == 0) continue;
+                        if (!string.Equals(process.MainModule?.FileName, Path.Combine(AppContext.BaseDirectory, "PhoneControl.exe"), StringComparison.OrdinalIgnoreCase)) continue;
                         Native.ShowWindow(process.MainWindowHandle, 9);
                         Native.SetForegroundWindow(process.MainWindowHandle);
                         break;

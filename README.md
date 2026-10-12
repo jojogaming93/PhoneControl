@@ -78,7 +78,7 @@ Alt+Q no longer invokes the renderer's quit shortcut; scrcpy's modifier shortcut
 
 ## Build / publish
 
-GitHub Actions builds/tests the installer and automatically attaches the setup `.exe`, source ZIP, checksum and manifest to a release draft when a version tag (`1.0.8` or `v1.0.8`) is pushed or **Build Windows installer and release** is run manually. Drafts are visible to repository maintainers and can be reviewed before publication. See [automatic release guidance](docs/distribution.md#automatic-github-release-drafts).
+GitHub Actions builds and tests an installer on feature, main and release branch pushes, then publishes it as an alpha, beta or RC prerelease. Each download includes the setup `.exe`, source ZIP, checksum and manifest. Preview installs keep separate settings and installation folders from Stable. An explicit stable tag such as `v1.1.0` publishes the stable Latest release. `version.props` holds the next development version. See [release channels and automation](docs/distribution.md#release-channels-and-installer-automation).
 
 The .NET 10 SDK is required to build, not to run the published folder. Versions are pinned for reproducibility; stable dependencies can be updated intentionally later.
 

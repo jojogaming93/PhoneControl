@@ -1,14 +1,13 @@
 name: Build Windows installer and release
 on:
   push:
-    branches: ['release/**']
+    branches: [main, 'feature/**', 'codex/**', 'release/**']
     tags: ['[0-9]*.[0-9]*.[0-9]*', 'v[0-9]*.[0-9]*.[0-9]*']
   workflow_dispatch:
     inputs:
       version:
-        description: Installer version; must match a selected release/version branch
-        required: true
-        default: '1.0.9'
+        description: Optional target version override; blank uses version.props or release/version
+        required: false
 permissions:
   contents: read
 jobs:
@@ -30,11 +29,13 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
           INPUT_VERSION: ${{ inputs.version }}
+          CI_RUN_ID: ${{ github.run_id }}
+          CI_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          $release = ./scripts/Resolve-ReleaseVersion.ps1 -EventName $env:EVENT_NAME -RefType $env:REF_TYPE -RefName $env:REF_NAME -InputVersion $env:INPUT_VERSION
+          $release = ./scripts/Resolve-ReleaseVersion.ps1 -EventName $env:EVENT_NAME -RefType $env:REF_TYPE -RefName $env:REF_NAME -InputVersion $env:INPUT_VERSION -RunId $env:CI_RUN_ID -RunAttempt $env:CI_RUN_ATTEMPT
           "version=$($release.Version)" >> $env:GITHUB_OUTPUT
           "tag=$($release.Tag)" >> $env:GITHUB_OUTPUT
-          "branch=$($release.ReleaseBranch)" >> $env:GITHUB_OUTPUT
+          "branch=$($release.SourceBranch)" >> $env:GITHUB_OUTPUT
   installer:
     needs: resolve
     permissions:
@@ -44,4 +45,4 @@ jobs:
       version: ${{ needs.resolve.outputs.version }}
       tag: ${{ needs.resolve.outputs.tag }}
       commit: ${{ github.sha }}
-      release_branch: ${{ needs.resolve.outputs.branch }}
+      source_branch: ${{ needs.resolve.outputs.branch }}
