@@ -1,5 +1,13 @@
 # Evidence and verification
 
+## Experimental iPhone adapter - 12 October 2026
+
+**Implemented:** [WDA screenshots and completed gestures](iphone.md), runtime backend selection, an optional continuous-input port, point/pixel geometry separation, explicit PNG configuration and bounded session/capture/control cleanup. Existing Android gameplay bindings and the control JAR are unchanged.
+
+**Observed locally:** the Release build completed with zero warnings/errors. All 31 isolated iPhone protocol checks passed in ordinary and obfuscated executables, using a local TCP WDA mock and synthetic PNGs decoded by the real Windows codec. The full regression suite passed 176 checks before the previously documented `Native mirror capture classifies driving.png at 640px` baseline failure. The public-source audit passed. This is not a passing full suite or actual iOS acceptance.
+
+**Unknown:** physical iPhone and Mac-hosted iOS Simulator behavior, version compatibility, viewer latency/refresh and real gameplay acceptance. No Apple emulator was installed on Windows, no iPhone was available, and no live phone gestures were injected by these tests.
+
 ## Phone adapter refactor - 12 October 2026
 
 **Implemented:** [phone ports and adapters](architecture.md) separate discovery, lifecycle, input, capture and vendor-driver support. **Observed locally:** the Release build completed with zero warnings/errors; the public-source audit passed; the JVM allocator passed 128 renewals and new action presses. The Windows self-test passed 145 checks, including simulated alternate-backend input, geometry/cleanup, capture-port cancellation and existing loopback controller/protocol checks, before failing `Native mirror capture classifies driving.png at 640px`.

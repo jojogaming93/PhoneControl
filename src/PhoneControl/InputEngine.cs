@@ -41,7 +41,10 @@ public sealed class InputEngine : IDisposable
     public NativeRect Viewport { get; private set; }
     public event Action? StateChanged;
     public event Action<double, double, bool>? EditPoint;
-    public InputEngine(IPhoneInput session, Profile profile) { this.session = session; this.profile = profile.Copy(); this.profile.EnsureDrivingLayout(); camera = new(session); }
+    public InputEngine(IPhoneInput session, Profile profile) {
+        ArgumentNullException.ThrowIfNull(session);
+        this.session = session; this.profile = profile.Copy(); this.profile.EnsureDrivingLayout(); camera = new(session);
+    }
     public void RecordMotion(ushort flags, int x, int y, int desktopWidth, int desktopHeight)
     {
         lock (gate) {

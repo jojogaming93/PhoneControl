@@ -11,6 +11,10 @@
 | src/PhoneControl/AndroidPhoneBackend.cs | Android device discovery, state/transport normalization and session factory |
 | src/PhoneControl/DeviceSession.cs | Android adapter: scrcpy version, ADB sessions, geometry, binary packets, cleanup |
 | src/PhoneControl/PhonePortsTest.cs | Simulated alternate backend and Android discovery/geometry regressions |
+| src/PhoneControl/IosPhoneBackend.cs | Experimental WDA discovery, owned session, capture/control serialization and cleanup |
+| src/PhoneControl/IosWdaClient.cs | Bounded WDA HTTP, point/pixel geometry and complete gesture packets |
+| src/PhoneControl/IosMirrorWindow.cs | Windows screenshot viewer, letterboxing, finite gestures and Home |
+| src/PhoneControl/IosBackendTest.cs | Local TCP WDA mock, synthetic PNGs and hardware-free protocol regression |
 | src/PhoneControl/InputEngine.cs | Focus, modes, keys/edges, tap timing, movement, action ownership |
 | src/PhoneControl/AimGesture.cs | Camera swipe envelope/renewal and raw-motion accumulator |
 | src/PhoneControl/RawInputReader.cs | WM_INPUT keyboard/mouse parsing and Alt differentiation |
@@ -25,6 +29,8 @@
 | docs/build.py | Offline website generator from these Markdown chapters and HUD JSON |
 
 ## Build the Windows app
+
+The experimental iPhone connection uses an externally prepared WDA endpoint; see [iPhone setup/testing](iphone.md). `--self-test-ios` runs its local mock-server checks without a phone or Mac. The ordinary `--self-test` retains all Android and iPhone checks. No local iOS emulator is installed, and real iOS acceptance remains unknown.
 
 The app targets x64 Windows, .NET 10 and WinUI 3 with Windows App SDK 2.5.1. `global.json` pins SDK 10.0.302 with latestFeature roll-forward. The project declares target framework Windows 10.0.26100.0 and minimum platform 10.0.17763.0; this declaration is not a test of every supported Windows version.
 

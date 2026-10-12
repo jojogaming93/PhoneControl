@@ -7,6 +7,17 @@ public enum PhoneDeviceState { Ready, Unauthorized, Offline }
 public enum PhoneTransport { Usb, Network, Emulator }
 public sealed record PhoneDevice(string Id, PhoneDeviceState State, string Description, PhoneTransport Transport);
 public sealed record PhoneConnectionOptions(int MaxFps, int MaxSize, int BitrateMbps, bool Audio);
+public sealed record PhoneBackendRegistration(string Key, string Label, Func<string, IPhoneBackend> Create,
+    IReadOnlyList<IUsbDriverSupport> Drivers, string SetupHelp, bool UsesAddress = false,
+    bool SupportsRealtimeTouch = true, Func<string, string>? NormalizeAddress = null);
+public readonly record struct PhoneGesture(double FromX, double FromY, double ToX, double ToY, int DurationMilliseconds);
+
+// Completed gestures are distinct from a backend that can keep fingers down.
+public interface IPhoneGestureInput
+{
+    Task Gesture(PhoneGesture gesture, CancellationToken cancellation = default);
+    Task Home(CancellationToken cancellation = default);
+}
 
 // Ports describe application needs. Wire concrete adapters in Program/App.
 public interface IPhoneBackend
@@ -31,10 +42,14 @@ public interface IMirrorSurface
     int TextureHeight { get; }
 }
 
-public interface IPhoneInput : ITouchSink, IMirrorSurface
+public interface IPhoneDisplay : IMirrorSurface
 {
     int Width { get; }
     int Height { get; }
+}
+
+public interface IPhoneInput : ITouchSink, IPhoneDisplay
+{
     void Back();
 }
 
@@ -44,15 +59,19 @@ public interface IPhoneFrameSource
     Task<byte[]> CaptureFrame(CancellationToken cancellation);
 }
 
-public interface IPhoneSession : IPhoneInput, IPhoneFrameSource, IDisposable
+public interface IPhoneSession : IPhoneDisplay, IPhoneFrameSource, IDisposable
 {
+    // Continuous touch is an optional port. Completed-gesture adapters do not
+    // implement ITouchSink or expose fake DOWN/MOVE/UP operations.
+    IPhoneInput? RealtimeInput { get; }
+    bool SupportsRealtimeTouch => RealtimeInput is not null;
     bool Connected { get; }
     bool MirrorAlive { get; }
     event Action<string>? Statistics;
     // Release held touches before publishing new physical/texture dimensions.
     event Action? GeometryChanged;
     event Action<string>? Fault;
-    Task Connect(PhoneDevice device, PhoneConnectionOptions options);
+    Task Connect(PhoneDevice device, PhoneConnectionOptions options, CancellationToken cancellation = default);
     // Release touches and clean up only resources owned by this session.
     Task Disconnect();
 }
