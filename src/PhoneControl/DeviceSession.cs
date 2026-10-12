@@ -76,7 +76,7 @@ public static class Processes
 }
 
 // Android adapter: ADB lifecycle, scrcpy framing and the control socket stay here.
-public sealed class DeviceSession : IPhoneSession
+public sealed class DeviceSession : IPhoneSession, IPhoneInput
 {
     private readonly ToolPaths tools;
     private readonly object gate = new();
@@ -92,6 +92,8 @@ public sealed class DeviceSession : IPhoneSession
     private int textureWidth, textureHeight;
     public nint MirrorWindow { get; private set; }
     public int Width => Volatile.Read(ref width);
+    public bool SupportsRealtimeTouch => true;
+    public IPhoneInput RealtimeInput => this;
     public int Height => Volatile.Read(ref height);
     public int TextureWidth => Volatile.Read(ref textureWidth);
     public int TextureHeight => Volatile.Read(ref textureHeight);
@@ -138,8 +140,9 @@ public sealed class DeviceSession : IPhoneSession
         return (w, h);
     }
 
-    public async Task Connect(PhoneDevice device, PhoneConnectionOptions options)
+    public async Task Connect(PhoneDevice device, PhoneConnectionOptions options, CancellationToken cancellation = default)
     {
+        cancellation.ThrowIfCancellationRequested();
         if (Connected) throw new InvalidOperationException("Already connected.");
         if (device.State != PhoneDeviceState.Ready) throw new IOException("Unlock the phone and accept its USB debugging prompt.");
         serial = device.Id;
@@ -147,20 +150,25 @@ public sealed class DeviceSession : IPhoneSession
         var version = Regex.Match(versionOutput, @"scrcpy\s+(\d+\.\d+(?:\.\d+)?)").Groups[1].Value;
         if (version != "4.1") throw new IOException($"This release uses the scrcpy 4.1 protocol. Found {version}. Install 4.1 with Install-Dependencies.ps1.");
         try {
+            cancellation.ThrowIfCancellationRequested();
             string size = await Processes.Run(tools.Adb, "-s", serial, "shell", "wm", "size");
+            cancellation.ThrowIfCancellationRequested();
             (naturalWidth, naturalHeight) = ParseDisplaySize(size);
             width = textureWidth = naturalWidth;
             height = textureHeight = naturalHeight;
             string id = Random.Shared.Next(1, int.MaxValue).ToString("x8");
             remoteJar = $"/data/local/tmp/phonecontrol-{id}.jar";
             await Processes.Run(tools.Adb, "-s", serial, "push", tools.ControlServer, remoteJar);
+            cancellation.ThrowIfCancellationRequested();
             string forwarded = await Processes.Run(tools.Adb, "-s", serial, "forward", "tcp:0", $"localabstract:scrcpy_{id}");
             port = int.Parse(forwarded.Trim());
+            cancellation.ThrowIfCancellationRequested();
             server = Processes.Start(tools.Adb, ["-s", serial, "shell", $"CLASSPATH={remoteJar}", "app_process", "/",
                 "com.genymobile.scrcpy.Server", version, $"scid={id}", "video=false", "audio=false", "control=true", "tunnel_forward=true",
                 "send_device_meta=false", "send_dummy_byte=true", "clipboard_autosync=false", "power_on=false", "cleanup=false"], Log.Write);
             // Forwarding may accept TCP before the Android abstract socket exists. Only a dummy-byte handshake proves readiness.
             for (int attempt = 0; attempt < 50; attempt++) {
+                cancellation.ThrowIfCancellationRequested();
                 var candidate = new TcpClient { NoDelay = true, SendTimeout = 250 };
                 try {
                     using var timeout = new CancellationTokenSource(500);
@@ -172,7 +180,7 @@ public sealed class DeviceSession : IPhoneSession
                 } catch (Exception e) when (e is SocketException or IOException or OperationCanceledException) { }
                 candidate.Dispose();
                 if (server.HasExited) throw new IOException("Phone control server exited. See diagnostics.");
-                await Task.Delay(100);
+                await Task.Delay(100, cancellation);
             }
             if (stream is null) throw new IOException("Could not open the phone control channel.");
             _ = DrainControlAsync(stream);
@@ -200,10 +208,11 @@ public sealed class DeviceSession : IPhoneSession
             });
             mirror.Exited += (_, _) => Fault?.Invoke("Phone view closed or USB disconnected.");
             for (int i = 0; i < 100; i++) {
+                cancellation.ThrowIfCancellationRequested();
                 if (mirror.HasExited) throw new IOException("Phone mirror could not start. See diagnostics.");
                 mirror.Refresh();
                 if (mirror.MainWindowHandle != 0) { MirrorWindow = mirror.MainWindowHandle; break; }
-                await Task.Delay(100);
+                await Task.Delay(100, cancellation);
             }
             if (MirrorWindow == 0) throw new IOException("Phone view did not create a window.");
             Log.Write($"Connected. {Width}×{Height}, H.264, {options.MaxFps} FPS cap, {options.MaxSize}px, no added video buffering.");

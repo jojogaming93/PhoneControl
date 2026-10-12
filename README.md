@@ -2,7 +2,7 @@
 
 <img src="assets/branding/phonecontrol-logo.png" alt="PhoneControl pilot mascot" width="160">
 
-A free native Windows app for USB Android mirroring and editable keyboard/mouse touch mappings. Built with **WinUI 3, Windows App SDK 2.5.1, .NET 10**, and the unmodified **scrcpy 4.1** video engine.
+A free native Windows app for USB Android mirroring and editable keyboard/mouse touch mappings, with an experimental iPhone screenshot/gesture connection through a prepared WebDriverAgent endpoint. Built with **WinUI 3, Windows App SDK 2.5.1, .NET 10**, and the unmodified **scrcpy 4.1** Android video engine.
 
 ## Copyright and license
 
@@ -16,7 +16,7 @@ Every published folder and installer bundles [corresponding source and build ins
 
 ## Privacy
 
-PhoneControl mirrors and controls the phone locally over USB using ADB and scrcpy. Profiles and diagnostic logs stay on the PC in `%LOCALAPPDATA%\PhoneControl`; driving recognition processes screen images locally. PhoneControl has no account, telemetry or analytics service and does not upload phone images, mappings or logs. Dependency installation and driver repair download official software; those downloads contact their providers. Android's USB authorization remains under the phone owner's control. Source publishing and support requests are separate maintainer actions.
+PhoneControl mirrors and controls Android locally over USB using ADB and scrcpy. The optional iPhone connection retrieves screenshots and sends user-selected gestures to the configured WebDriverAgent endpoint. Profiles and diagnostic logs stay on the PC in `%LOCALAPPDATA%\PhoneControl`; driving recognition processes screen images locally. PhoneControl has no account, telemetry or analytics service and does not upload phone images, mappings or logs. Dependency installation and driver repair download official software; those downloads contact their providers. Android's USB authorization remains under the phone owner's control. Source publishing and support requests are separate maintainer actions.
 
 ## Documentation
 
@@ -109,7 +109,7 @@ Samsung Game Booster can dim and lock game touch input after idle time. If its t
 
 `DeviceSession` manages two scrcpy sessions: the official GPU-rendered video/audio client with control disabled, and a control-only Android server speaking scrcpy 4.1's documented binary protocol. A unique loopback ADB forward isolates the control channel. Temporary server JARs and the app's own forward are removed on a normal disconnect.
 
-Phone discovery, sessions, input, frame capture and USB driver repair use [ports and adapters](docs/architecture.md). The current Android backend discovers devices across vendors; Samsung driver repair is one registered adapter. Other HUDs need calibration, other handsets remain unverified, and iPhone support requires a separate backend. No phone-specific display fallback or saved-profile replacement is used.
+Phone discovery, sessions, input, frame capture and USB driver repair use [ports and adapters](docs/architecture.md). The current Android backend discovers devices across vendors; Samsung driver repair is one registered adapter. Other HUDs need calibration, other handsets remain unverified, and the experimental [iPhone backend](docs/iphone.md) requires an externally prepared WebDriverAgent server. Continuous gameplay fingers and audio are unavailable on iPhone. No phone-specific display fallback or saved-profile replacement is used.
 
 `InputEngine` handles focus, key edges, independent fingers, joystick diagonals, tap timing, camera swipes, and cursor release. `MappingOverlay` is a lightweight native layered window, leaving video frames in scrcpy's native decode/render path. The settings/dashboard interface is WinUI 3. The video window is deliberately separate so native fullscreen and resizing keep working.
 

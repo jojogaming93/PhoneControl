@@ -11,7 +11,7 @@ namespace PhoneControl;
 
 public static class SelfTest
 {
-    public static int Run()
+    public static int Run(bool iosOnly = false)
     {
         var results = new List<string>();
         void Check(bool value, string name) { if (!value) throw new Exception(name); results.Add("PASS " + name); }
@@ -19,6 +19,11 @@ public static class SelfTest
             bool rejected = false; try { action(); } catch (InvalidDataException) { rejected = true; } Check(rejected, name);
         }
         try {
+            IosBackendTest.Run(Check).GetAwaiter().GetResult();
+            if (iosOnly) {
+                results.Add($"{results.Count} iPhone protocol checks passed (synthetic server; no real iOS device).");
+                File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-ios-results.txt"), results); return 0;
+            }
             string settingsMigration = Path.Combine(Path.GetTempPath(), "PhoneControl-settings-" + Guid.NewGuid().ToString("N"));
             try {
                 string previousDirectory = Path.Combine(settingsMigration, "previous");
@@ -316,7 +321,7 @@ public static class SelfTest
             results.Add($"{results.Count} checks passed.");
             File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-results.txt"), results); return 0;
         } catch (Exception e) {
-            results.Add("FAIL " + e); File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-results.txt"), results); return 1;
+            results.Add("FAIL " + e); File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, iosOnly ? "self-test-ios-results.txt" : "self-test-results.txt"), results); return 1;
         }
     }
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]

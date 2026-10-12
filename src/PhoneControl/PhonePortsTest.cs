@@ -44,10 +44,10 @@ internal static class PhonePortsTest
         profile.Bindings[1].Key = "F2";
         profile.Bindings[1].Mode = "Hold";
         profile.Validate();
-        using var input = new InputEngine(session, profile);
+        using var input = new InputEngine(session.RealtimeInput!, profile);
         session.GeometryChanged += input.Reset;
         input.UpdateActions([0x70, 0x71], [0x70, 0x71], [], 0);
-        var aim = new AimGesture(session); aim.Begin(profile);
+        var aim = new AimGesture(session.RealtimeInput!); aim.Begin(profile);
         for (int i = 0; i < 128; i++) aim.Move(profile, 1000, 0, 1280, 720);
         input.UpdateActions([0x70, 0x71, 32], [32], [], 1);
         check(recorded.Active.ContainsKey(10) && recorded.Active.ContainsKey(11) && recorded.Active.ContainsKey(1) && recorded.Active.ContainsKey(12) &&
@@ -64,9 +64,9 @@ internal static class PhonePortsTest
         check(input.Driving && recorded.Active.ContainsKey(10), "Driving bindings run through an alternate input adapter");
         input.SetDetectedDriving(false);
         check(recorded.Active.Count == 0, "Layout changes release alternate adapter fingers");
-        session.Back();
+        session.RealtimeInput!.Back();
         check(recorded.BackCount == 1, "Phone navigation port exposes Back without an Android keycode");
-        session.Touch(0, 0, .5, .5);
+        session.RealtimeInput!.Touch(0, 0, .5, .5);
         session.Disconnect().GetAwaiter().GetResult();
         check(!session.Connected && recorded.Active.Count == 0, "Alternate session disconnection releases held touches");
     }
@@ -78,8 +78,10 @@ internal static class PhonePortsTest
         public IPhoneSession CreateSession() => new RecordingSession();
     }
 
-    internal sealed class RecordingSession : IPhoneSession
+    internal sealed class RecordingSession : IPhoneSession, IPhoneInput
     {
+        public bool SupportsRealtimeTouch => true;
+        public IPhoneInput RealtimeInput => this;
         public Dictionary<long, (double X, double Y)> Active { get; } = new();
         public List<(long Pointer, byte Action)> Events { get; } = new();
         public PhoneConnectionOptions? Options { get; private set; }
@@ -94,7 +96,9 @@ internal static class PhonePortsTest
         public event Action? GeometryChanged;
         public event Action<string>? Statistics { add { } remove { } }
         public event Action<string>? Fault { add { } remove { } }
-        public Task Connect(PhoneDevice device, PhoneConnectionOptions options) { Options = options; Connected = true; return Task.CompletedTask; }
+        public Task Connect(PhoneDevice device, PhoneConnectionOptions options, CancellationToken cancellation = default) {
+            cancellation.ThrowIfCancellationRequested(); Options = options; Connected = true; return Task.CompletedTask;
+        }
         public Task Disconnect() { ReleaseAll(); Connected = false; return Task.CompletedTask; }
         public Task<byte[]> CaptureFrame(CancellationToken cancellation) => Task.FromException<byte[]>(new NotSupportedException("This test session has no capture source."));
         public void Touch(long pointer, byte action, double x, double y) {
