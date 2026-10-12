@@ -5,8 +5,7 @@ namespace PhoneControl;
 
 internal static class ConnectionPolicy
 {
-    // Avoid guessing between devices or auto-selecting an emulator/network ADB.
-    internal static bool CanAutoConnect(IReadOnlyList<DeviceInfo> devices) =>
-        devices.Count == 1 && devices[0].State == "device" &&
-        !devices[0].Serial.Contains(':') && !devices[0].Serial.StartsWith("emulator-", StringComparison.OrdinalIgnoreCase);
+    // Transport identity is the adapter's responsibility, not an ID naming rule.
+    internal static bool CanAutoConnect(IReadOnlyList<PhoneDevice> devices) =>
+        devices.Count == 1 && devices[0].State == PhoneDeviceState.Ready && devices[0].Transport == PhoneTransport.Usb;
 }

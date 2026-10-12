@@ -57,7 +57,7 @@ public sealed partial class App : Application
     {
         try {
             Log.Write("Creating main window.");
-            window = new MainWindow();
+            window = new MainWindow(new AndroidPhoneBackend(), [new SamsungDriver()]);
             window.Activate();
         } catch (Exception e) { Log.Write(e.ToString()); throw; }
     }

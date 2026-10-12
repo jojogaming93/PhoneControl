@@ -15,7 +15,7 @@ internal sealed class MirrorFrameCapture : IDisposable
     private int width, height;
     private byte[] pixels = [];
 
-    public HudFrame? TryCapture(DeviceSession session)
+    public HudFrame? TryCapture(IMirrorSurface session)
     {
         nint window = session.MirrorWindow;
         if (window == 0 || !Native.IsWindow(window) || Native.IsIconic(window) ||
