@@ -4,15 +4,15 @@
 
 **Implemented:** development uses `feature/*` branches and pull requests into `main`. A release is stabilized on `release/<major.minor.patch>`, with fixes committed there and merged back into `main`. Each release-branch push runs the installer pipeline and creates or refreshes a draft under `v<major.minor.patch>`. Published versions are immutable; subsequent development uses a new release branch/version.
 
-After these workflow files are merged into `main`, choose **Actions → Start release → Run workflow**, select `main`, and enter an unused version such as `1.0.8`. It creates `release/1.0.8` from the selected main commit and directly invokes the reusable installer workflow. This direct call matters because branch pushes made by the built-in Actions token do not trigger another push workflow. Branch creation refuses an existing branch; rerun **Build Windows installer and release** on that release branch instead. Ordinary maintainer pushes to the branch trigger builds automatically.
+After these workflow files are merged into `main`, choose **Actions → Start release → Run workflow**, select `main`, and enter an unused version such as `1.0.9`. It creates `release/1.0.9` from the selected main commit and directly invokes the reusable installer workflow. This direct call matters because branch pushes made by the built-in Actions token do not trigger another push workflow. Branch creation refuses an existing branch; rerun **Build Windows installer and release** on that release branch instead. Ordinary maintainer pushes to the branch trigger builds automatically. The current default avoids the existing `1.0.8` draft; always check versions in GitHub Releases before starting another release.
 
 To start a branch using Git instead, use a checkout of the public repository:
 
 ```powershell
 gh auth switch --hostname github.com --user jojogaming93
 git fetch origin main
-git switch -c release/1.0.8 origin/main
-git push --set-upstream origin release/1.0.8
+git switch -c release/1.0.9 origin/main
+git push --set-upstream origin release/1.0.9
 ```
 
 `ci.yml` validates public source, reproducible docs/fixtures and release automation, publishes the Windows app and runs isolated iPhone protocol checks plus the full Android/iPhone regression suite on Windows. Source generation uses Windows and pinned Python 3.14.3: zlib builds on other platforms can produce different compressed PNG bytes for the same fixture pixels, while the audit requires exact fixture bytes. It runs on main, feature, codex and release branch pushes, all pull requests, and manual dispatches. Fork pull requests receive read-only permissions and cannot create releases.
