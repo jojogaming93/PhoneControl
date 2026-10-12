@@ -11,7 +11,7 @@ namespace PhoneControl;
 
 public static class SelfTest
 {
-    public static int Run()
+    public static int Run(bool iosOnly = false)
     {
         var results = new List<string>();
         void Check(bool value, string name) { if (!value) throw new Exception(name); results.Add("PASS " + name); }
@@ -19,6 +19,11 @@ public static class SelfTest
             bool rejected = false; try { action(); } catch (InvalidDataException) { rejected = true; } Check(rejected, name);
         }
         try {
+            IosBackendTest.Run(Check).GetAwaiter().GetResult();
+            if (iosOnly) {
+                results.Add($"{results.Count} iPhone protocol checks passed (synthetic server; no real iOS device).");
+                File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-ios-results.txt"), results); return 0;
+            }
             string settingsMigration = Path.Combine(Path.GetTempPath(), "PhoneControl-settings-" + Guid.NewGuid().ToString("N"));
             try {
                 string previousDirectory = Path.Combine(settingsMigration, "previous");
@@ -44,12 +49,13 @@ public static class SelfTest
             Check(new Settings().AutoConnect, "Fresh settings enable automatic phone connection");
             Check(!JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(new Settings { AutoConnect = false }))!.AutoConnect,
                 "Automatic connection preference survives serialization");
-            Check(ConnectionPolicy.CanAutoConnect([new("phone", "device", "model:TEST_DEVICE")]), "One authorized USB phone can auto-connect");
-            Check(!ConnectionPolicy.CanAutoConnect([]) && !ConnectionPolicy.CanAutoConnect([new("phone", "unauthorized", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("phone", "offline", "")]), "Absent, unauthorized and offline phones never auto-connect");
-            Check(!ConnectionPolicy.CanAutoConnect([new("phone", "device", ""), new("another", "device", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("127.0.0.1:5555", "device", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("emulator-5554", "device", "")]), "Multiple devices, network ADB and emulators require manual selection");
+            Check(ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Ready, "model:TEST_DEVICE", PhoneTransport.Usb)]), "One authorized USB phone can auto-connect");
+            Check(!ConnectionPolicy.CanAutoConnect([]) && !ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Unauthorized, "", PhoneTransport.Usb)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Offline, "", PhoneTransport.Usb)]), "Absent, unauthorized and offline phones never auto-connect");
+            Check(!ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Ready, "", PhoneTransport.Usb), new("another", PhoneDeviceState.Ready, "", PhoneTransport.Usb)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("127.0.0.1:5555", PhoneDeviceState.Ready, "", PhoneTransport.Network)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("emulator-5554", PhoneDeviceState.Ready, "", PhoneTransport.Emulator)]), "Multiple devices, network ADB and emulators require manual selection");
+            PhonePortsTest.Run(Check);
             string corruptDriver = Path.GetTempFileName();
             try {
                 File.WriteAllText(corruptDriver, "not an official driver");
@@ -89,7 +95,6 @@ public static class SelfTest
                 var frame = DrivingModeMonitor.DecodeFrame(File.ReadAllBytes(Fixture(fixture.Item1))).GetAwaiter().GetResult();
                 Check(detector.IsDrivingFrame(frame.Pixels, frame.Width, frame.Height) == fixture.Item2, "Synthetic HUD classification: " + fixture.Item1);
             }
-            DrivingDetectionTest.Run(Fixture, Check);
             for (int reconnect = 0; reconnect < 12; reconnect++) {
                 var weak = CreateOverlay();
                 GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
@@ -310,10 +315,13 @@ public static class SelfTest
                 var restarted = new byte[64]; inbound.GetStream().ReadExactly(restarted);
                 Check(restarted[1] == 0 && restarted[33] == 1, "Camera can begin a fresh aim session after cleanup");
             } finally { listener.Stop(); }
+            // Run desktop-capture fixtures after the deterministic controller
+            // and transport checks, which do not depend on desktop visibility.
+            DrivingDetectionTest.Run(Fixture, Check);
             results.Add($"{results.Count} checks passed.");
             File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-results.txt"), results); return 0;
         } catch (Exception e) {
-            results.Add("FAIL " + e); File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-results.txt"), results); return 1;
+            results.Add("FAIL " + e); File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, iosOnly ? "self-test-ios-results.txt" : "self-test-results.txt"), results); return 1;
         }
     }
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]

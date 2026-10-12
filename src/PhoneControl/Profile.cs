@@ -186,6 +186,8 @@ public static class KeyNames
 
 public sealed class Settings
 {
+    public string PhoneBackend { get; set; } = "android";
+    public string IPhoneEndpoint { get; set; } = "http://127.0.0.1:8100/";
     public bool AutoConnect { get; set; } = true;
     public int MaxFps { get; set; } = 120;
     public int MaxSize { get; set; } = 1920;

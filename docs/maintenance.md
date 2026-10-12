@@ -1,13 +1,20 @@
 # Maintenance and agent workflow
 
-**Current naming/version:** PhoneControl 1.0.7. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings. Public signing requirements remain in force.
+**Current naming/version:** PhoneControl 1.0.7. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings.
 
 ## Source map
 
 | Source | Responsibility |
 |---|---|
 | src/PhoneControl/Profile.cs | Starter layout, validation, key names, settings, sprint migration, log |
-| src/PhoneControl/DeviceSession.cs | scrcpy discovery/version, ADB sessions, geometry, binary packets, cleanup |
+| src/PhoneControl/PhonePorts.cs | Backend, session, input, mirror, capture and driver contracts |
+| src/PhoneControl/AndroidPhoneBackend.cs | Android device discovery, state/transport normalization and session factory |
+| src/PhoneControl/DeviceSession.cs | Android adapter: scrcpy version, ADB sessions, geometry, binary packets, cleanup |
+| src/PhoneControl/PhonePortsTest.cs | Simulated alternate backend and Android discovery/geometry regressions |
+| src/PhoneControl/IosPhoneBackend.cs | Experimental WDA discovery, owned session, capture/control serialization and cleanup |
+| src/PhoneControl/IosWdaClient.cs | Bounded WDA HTTP, point/pixel geometry and complete gesture packets |
+| src/PhoneControl/IosMirrorWindow.cs | Windows screenshot viewer, letterboxing, finite gestures and Home |
+| src/PhoneControl/IosBackendTest.cs | Local TCP WDA mock, synthetic PNGs and hardware-free protocol regression |
 | src/PhoneControl/InputEngine.cs | Focus, modes, keys/edges, tap timing, movement, action ownership |
 | src/PhoneControl/AimGesture.cs | Camera swipe envelope/renewal and raw-motion accumulator |
 | src/PhoneControl/RawInputReader.cs | WM_INPUT keyboard/mouse parsing and Alt differentiation |
@@ -22,6 +29,8 @@
 | docs/build.py | Offline website generator from these Markdown chapters and HUD JSON |
 
 ## Build the Windows app
+
+The experimental iPhone connection uses an externally prepared WDA endpoint; see [iPhone setup/testing](iphone.md). `--self-test-ios` runs its local mock-server checks without a phone or Mac. The ordinary `--self-test` retains all Android and iPhone checks. No local iOS emulator is installed, and real iOS acceptance remains unknown.
 
 The app targets x64 Windows, .NET 10 and WinUI 3 with Windows App SDK 2.5.1. `global.json` pins SDK 10.0.302 with latestFeature roll-forward. The project declares target framework Windows 10.0.26100.0 and minimum platform 10.0.17763.0; this declaration is not a test of every supported Windows version.
 
@@ -98,7 +107,7 @@ Release scripts now default to 1.0.3. Foreground mirror recognition runs at a 50
 
 ## Ownership and protected releases - 11 October 2026
 
-**Current 1.0.6:** original pilot mascot assets are in `assets/branding` and used in the dashboard, app and installers. Public installer builds require trusted signing credentials; `-AllowUnsigned` is explicitly for validation and writes to `artifacts/unsigned-validation`. The current CI runs that validation mode. SignPath Foundation application preparation is in `signing-application.md`; provider approval/integration is pending. No self-signed release is supported. Run `python docs/build.py` and the public-source audit before packaging. Audited branding hashes are allowlisted separately from the reproducible HUD fixtures.
+**Current 1.0.6:** original pilot mascot assets are in `assets/branding` and used in the dashboard, app and installers. Installer builds write to `artifacts/releases`. Run `python docs/build.py` and the public-source audit before packaging. Audited branding hashes are allowlisted separately from the reproducible HUD fixtures.
 
 Release scripts now default to **1.0.5**. Original PhoneControl code/documentation/assets use `LICENSE` (GNU AGPL version 3 only, `AGPL-3.0-only`) with **jojogaming93** as copyright owner and publisher. This supersedes the temporary proprietary terms introduced in 1.0.4. Third-party licenses and the Apache-2.0 server remain intact. `AppInfo.cs` reads assembly metadata so sidebar/About version labels follow `-Version` overrides without a separate UI version constant. Copyright metadata also appears in app/installer file properties and the installer publisher entry.
 
@@ -106,6 +115,4 @@ Release scripts now default to **1.0.5**. Original PhoneControl code/documentati
 
 Original DLLs, generated configuration and rename mappings stay under ignored `artifacts/obfuscation`; retain these privately to interpret release stack traces. They and application PDBs are excluded from the installed payload. Obfuscation adds friction to reverse engineering, not confidentiality or a guarantee against decompilation. It does not protect a separately shared source tree.
 
-`Build-SourceArchive.ps1` packages the current readable sources (including uncommitted edits and new source files), build/install scripts, obfuscation configuration, assets and docs into `source/PhoneControl-source.zip` in every publish. It uses explicit source roots/formats and Git's non-ignored file listing; build output, settings, credentials and private mappings stay excluded. A per-file `SOURCE-MANIFEST.json` records version/commit/status/hashes. `SOURCE.md` supplies extraction/build/dependency instructions; an extracted archive can be rebuilt after `git init` without a GitHub account or a commit. The installer and CI also provide the identical source ZIP beside the release binary. About includes source access, redistribution rights and the warranty notice. Obfuscation/signing do not prevent AGPL recipients from modifying, rebuilding or running an unsigned modified app.
-
-When certificate parameters are supplied, Authenticode signing runs **after obfuscation**, signs/verifies `PhoneControl.exe`, `PhoneControl.dll`, the payload installer and final launcher, and aborts on any signing or verification failure. Signing establishes publisher identity/integrity; it does not encrypt code or prohibit modification. A trusted code-signing certificate remains an external prerequisite. The manifest records `obfuscated` and `signed` independently.
+`Build-SourceArchive.ps1` packages the current readable sources (including uncommitted edits and new source files), build/install scripts, obfuscation configuration, assets and docs into `source/PhoneControl-source.zip` in every publish. It uses explicit source roots/formats and Git's non-ignored file listing; build output, settings, credentials and private mappings stay excluded. A per-file `SOURCE-MANIFEST.json` records version/commit/status/hashes. `SOURCE.md` supplies extraction/build/dependency instructions; an extracted archive can be rebuilt after `git init` without a GitHub account or a commit. The installer and CI also provide the identical source ZIP beside the release binary. About includes source access, redistribution rights and the warranty notice. Obfuscation does not prevent AGPL recipients from modifying, rebuilding or running the app.

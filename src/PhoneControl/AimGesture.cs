@@ -31,7 +31,7 @@ internal sealed class AimGesture(ITouchSink sink)
             sink.Touch(1, 2, x, y);
         }
     }
-    public void Reset() => active = false; // DeviceSession.ReleaseAll already lifts it.
+    public void Reset() => active = false; // The input port's ReleaseAll already lifts it.
 }
 
 internal sealed class MouseMotion

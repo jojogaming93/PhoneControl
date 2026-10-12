@@ -30,6 +30,9 @@ foreach ($relative in $docFiles) {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $docTarget) | Out-Null
     Copy-Item -LiteralPath $docSource -Destination $docTarget -Force
 }
+# Remove the retired chapter when reusing a portable output directory.
+$retiredChapter = Join-Path $docsDestination 'signing-application.md'
+if (Test-Path -LiteralPath $retiredChapter) { Remove-Item -LiteralPath $retiredChapter -Force }
 $serverNotices = Join-Path $outputDirectory 'tools\control-server-source'
 New-Item -ItemType Directory -Force -Path $serverNotices | Out-Null
 Copy-Item -LiteralPath (Join-Path $projectRoot 'server\PointersState.java'), (Join-Path $projectRoot 'server\README.md'), (Join-Path $projectRoot 'server\LICENSE.scrcpy') -Destination $serverNotices -Force
