@@ -17,7 +17,6 @@ Open [index.html](index.html) for the offline website, interactive HUD atlas, se
 | [verification.md](verification.md) | Evidence, confidence, test coverage and a future test procedure |
 | [maintenance.md](maintenance.md) | Source map, build/publish, Android server rebuild and next work |
 | [distribution.md](distribution.md) | Self-contained installer, device onboarding, driver repair and release gates |
-| [signing-application.md](signing-application.md) | SignPath Foundation application draft and pending approval/integration |
 
 ## Agent handoff
 
