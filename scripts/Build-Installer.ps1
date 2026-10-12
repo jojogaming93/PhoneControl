@@ -53,6 +53,9 @@ $payload = Get-ChildItem -LiteralPath $staging -Recurse -File | Where-Object { $
 }
 $commit = & git -C $projectRoot rev-parse --verify HEAD 2>$null
 if ($LASTEXITCODE -ne 0) { $commit = $null }
-$dirty = [bool](& git -C $projectRoot status --porcelain)
+$sourceChanges = @(& git -C $projectRoot status --porcelain)
+if ($LASTEXITCODE -ne 0) { throw 'Could not inspect source status.' }
+$dirty = $sourceChanges.Count -gt 0
+if ($dirty) { Write-Output 'Source status after packaging:'; $sourceChanges | Write-Output }
 [ordered]@{ version=$Version; channel=$identity.Channel; sourceBranch=$SourceBranch; numericVersion=$identity.NumericVersion; appId=$identity.AppId; productName=$identity.ProductName; license='AGPL-3.0-only'; copyrightOwner='jojogaming93'; builtUtc=[DateTime]::UtcNow.ToString('o'); sourceCommit=$commit; sourceDirty=$dirty; sourceArchive=[IO.Path]::GetFileName($sourceArchive); sourceArchiveSha256=(Get-FileHash -LiteralPath $sourceArchive).Hash.ToLowerInvariant(); architecture='x64'; minimumWindowsBuild=26100; obfuscated=$true; installerSha256=$hash; payload=@($payload) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $release "PhoneControl-$Version-manifest.json") -Encoding UTF8
 Write-Output "Installer: $installer"

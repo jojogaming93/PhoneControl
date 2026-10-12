@@ -37,7 +37,10 @@ try {
     }
     $commit = & git -C $projectRoot rev-parse --verify HEAD 2>$null
     if ($LASTEXITCODE -ne 0) { $commit = $null } # A recipient's freshly initialized source folder has no HEAD.
-    $metadata = [ordered]@{ version=$Version; license='AGPL-3.0-only'; copyrightOwner='jojogaming93'; sourceCommit=$commit; sourceDirty=[bool](& git -C $projectRoot status --porcelain); files=@($entries.ToArray()) } | ConvertTo-Json -Depth 5
+    $sourceChanges = @(& git -C $projectRoot status --porcelain)
+    if ($LASTEXITCODE -ne 0) { throw 'Could not inspect source status.' }
+    if ($sourceChanges.Count -gt 0) { Write-Output 'Source status while archiving:'; $sourceChanges | Write-Output }
+    $metadata = [ordered]@{ version=$Version; license='AGPL-3.0-only'; copyrightOwner='jojogaming93'; sourceCommit=$commit; sourceDirty=($sourceChanges.Count -gt 0); files=@($entries.ToArray()) } | ConvertTo-Json -Depth 5
     $manifestEntry = $zip.CreateEntry('SOURCE-MANIFEST.json')
     $writer = [IO.StreamWriter]::new($manifestEntry.Open(), [Text.UTF8Encoding]::new($false))
     try { $writer.Write($metadata) } finally { $writer.Dispose() }
