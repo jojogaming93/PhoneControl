@@ -52,11 +52,9 @@ jobs:
         run: |
           foreach ($mode in @('--self-test-ios', '--self-test')) {
             $test = Start-Process ./artifacts/ci/PhoneControl.exe -ArgumentList $mode -WindowStyle Hidden -Wait -PassThru
-            $result = './artifacts/ci/self-test-results.txt'
-            if (Test-Path -LiteralPath $result) {
-              Get-Content -LiteralPath $result
-              Copy-Item -LiteralPath $result -Destination "./artifacts/ci/$($mode.TrimStart('-'))-results.txt"
-            }
+            $result = "./artifacts/ci/$($mode.TrimStart('-'))-results.txt"
+            if (-not (Test-Path -LiteralPath $result)) { throw "$mode did not produce a result file." }
+            Get-Content -LiteralPath $result
             if ($test.ExitCode -ne 0) { throw "$mode failed with exit code $($test.ExitCode)." }
           }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
