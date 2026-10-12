@@ -14,7 +14,7 @@ internal static class DrivingDetectionTest
         var walking = DrivingModeMonitor.DecodeFrame(File.ReadAllBytes(fixture("walking.png"))).GetAwaiter().GetResult();
         var driveFrame = new HudFrame(driving.Pixels, driving.Width, driving.Height);
         var walkFrame = new HudFrame(walking.Pixels, walking.Width, walking.Height);
-        using var session = DeviceSession.ForTransportTest(null!, 2340, 1080);
+        using var session = new PhonePortsTest.RecordingSession();
         using var input = new InputEngine(session, Profile.Starter());
         HudFrame? current = null;
         var gate = new object();
@@ -86,6 +86,27 @@ internal static class DrivingDetectionTest
             check(SpinWait.SpinUntil(() => input.Driving, 500), "Completed phone captures still detect driving when the mirror is unavailable");
         } finally { fallbackMonitor.Stop().GetAwaiter().GetResult(); }
 
+        // Exercise the production constructor through independent mirror and
+        // capture ports; no concrete Android session or ADB tools are present.
+        input.SetDetectedDriving(false);
+        var encodedDriving = File.ReadAllBytes(fixture("driving.png"));
+        var portMonitor = new DrivingModeMonitor(session, new TestFrames(cancellation => Task.FromResult(encodedDriving)), input);
+        try {
+            check(SpinWait.SpinUntil(() => input.Driving, 2000), "Production monitor decodes an alternate frame-source port with an unavailable mirror");
+        } finally { portMonitor.Stop().GetAwaiter().GetResult(); }
+
+        var portStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int portActive = 0;
+        var cancelMonitor = new DrivingModeMonitor(session, new TestFrames(async cancellation => {
+            Interlocked.Increment(ref portActive); portStarted.TrySetResult();
+            try { await Task.Delay(Timeout.Infinite, cancellation); return encodedDriving; }
+            finally { Interlocked.Decrement(ref portActive); }
+        }), input);
+        try {
+            check(portStarted.Task.Wait(2000), "Production monitor starts capture through the alternate frame-source port");
+        } finally { cancelMonitor.Stop().GetAwaiter().GetResult(); }
+        check(portActive == 0, "Production monitor cancellation drains the alternate frame-source port");
+
         // Exercise the real GDI path with synthetic HUD fixtures rendered in a
         // temporary test surface, never by injecting a touch into the game.
         var previous = Native.GetForegroundWindow();
@@ -140,6 +161,11 @@ internal static class DrivingDetectionTest
             check(remaining == resources,
                 $"Mirror capture releases all GDI objects after 100 resize/disposal cycles ({resources} to {remaining})");
         } finally { DestroyWindow(window); if (previous != 0) Native.SetForegroundWindow(previous); }
+    }
+
+    private sealed class TestFrames(Func<CancellationToken, Task<byte[]>> capture) : IPhoneFrameSource
+    {
+        public Task<byte[]> CaptureFrame(CancellationToken cancellation) => capture(cancellation);
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct BitmapInfo

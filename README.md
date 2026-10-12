@@ -2,7 +2,7 @@
 
 <img src="assets/branding/phonecontrol-logo.png" alt="PhoneControl pilot mascot" width="160">
 
-A free native Windows app for USB Android mirroring and editable keyboard/mouse touch mappings. Built with **WinUI 3, Windows App SDK 2.5.1, .NET 10**, and the unmodified **scrcpy 4.1** video engine.
+A free native Windows app for USB Android mirroring and editable keyboard/mouse touch mappings, with an experimental iPhone screenshot/gesture connection through a prepared WebDriverAgent endpoint. Built with **WinUI 3, Windows App SDK 2.5.1, .NET 10**, and the unmodified **scrcpy 4.1** Android video engine.
 
 ## Copyright and license
 
@@ -14,13 +14,9 @@ Every published folder and installer bundles [corresponding source and build ins
 
 - **Undawn** — the only game currently tested with the supplied starter layout and driving HUD recognition. Other games require custom mappings and separate testing.
 
-## Code signing policy
-
-SignPath Foundation application preparation is pending; PhoneControl is not yet signed by or sponsored by SignPath Foundation. The proposed maintainer, reviewer and release approver is [jojogaming93](https://github.com/jojogaming93). Public releases must originate from the audited public source and approved build workflow, include corresponding source, and pass regression and Authenticode verification. No self-signed certificate or unsigned validation artifact is a trusted public release. If accepted, release signing will use the Foundation's managed service and manual approval; the required provider attribution will be added after acceptance. See the [application draft](docs/signing-application.md).
-
 ## Privacy
 
-PhoneControl mirrors and controls the phone locally over USB using ADB and scrcpy. Profiles and diagnostic logs stay on the PC in `%LOCALAPPDATA%\PhoneControl`; driving recognition processes screen images locally. PhoneControl has no account, telemetry or analytics service and does not upload phone images, mappings or logs. Dependency installation and driver repair download official software; those downloads contact their providers. Android's USB authorization remains under the phone owner's control. Source publishing, support requests and signing applications are separate maintainer actions.
+PhoneControl mirrors and controls Android locally over USB using ADB and scrcpy. The optional iPhone connection retrieves screenshots and sends user-selected gestures to the configured WebDriverAgent endpoint. Profiles and diagnostic logs stay on the PC in `%LOCALAPPDATA%\PhoneControl`; driving recognition processes screen images locally. PhoneControl has no account, telemetry or analytics service and does not upload phone images, mappings or logs. Dependency installation and driver repair download official software; those downloads contact their providers. Android's USB authorization remains under the phone owner's control. Source publishing and support requests are separate maintainer actions.
 
 ## Documentation
 
@@ -28,7 +24,7 @@ Open [the PhoneControl field guide](docs/index.html) for the offline documentati
 
 ## Run
 
-Public release installers belong in `artifacts/releases`. Version 1.0.6 requires trusted signing before public distribution; signing-provider approval is pending. Development/CI installers built with `scripts/Build-Installer.ps1 -AllowUnsigned` are isolated in `artifacts/unsigned-validation` and must not be published as trusted releases. The installer bundles all application runtimes/tools for the current user and creates shortcuts. The target is Intel/AMD x64 Windows 11 24H2 or newer. [Installation and release notes](docs/distribution.md) describe phone consent, driver repair and release gates. Installer binaries are generated artifacts rather than source-controlled files.
+Release installers are built in `artifacts/releases`. The installer bundles all application runtimes/tools for the current user and creates shortcuts. The target is Intel/AMD x64 Windows 11 24H2 or newer. [Installation and release notes](docs/distribution.md) describe phone consent, driver repair and release gates. Installer binaries are generated artifacts rather than source-controlled files.
 
 Open `artifacts/PhoneControl/PhoneControl.exe` or the **PhoneControl** desktop shortcut. The published folder contains the .NET and Windows App SDK runtimes and a copy of scrcpy, so no paid license or separate runtime installation is required. Keep the entire folder together.
 
@@ -82,7 +78,7 @@ Alt+Q no longer invokes the renderer's quit shortcut; scrcpy's modifier shortcut
 
 ## Build / publish
 
-GitHub Actions builds/tests the installer and automatically attaches the setup `.exe`, source ZIP, checksum and manifest to a release draft when a version tag (`1.0.8` or `v1.0.8`) is pushed or **Build Windows installer and release** is run manually. Drafts remain unsigned validation builds while trusted signing is pending; they are visible to repository maintainers. See [automatic release guidance](docs/distribution.md#automatic-github-release-drafts).
+GitHub Actions builds/tests the installer and automatically attaches the setup `.exe`, source ZIP, checksum and manifest to a release draft when a version tag (`1.0.8` or `v1.0.8`) is pushed or **Build Windows installer and release** is run manually. Drafts are visible to repository maintainers and can be reviewed before publication. See [automatic release guidance](docs/distribution.md#automatic-github-release-drafts).
 
 The .NET 10 SDK is required to build, not to run the published folder. Versions are pinned for reproducibility; stable dependencies can be updated intentionally later.
 
@@ -95,7 +91,7 @@ dotnet build .\src\PhoneControl\PhoneControl.csproj -c Release
 
 The dependency installer downloads only the official GitHub scrcpy 4.1 release and verifies its published SHA-256 digest. Publishing copies the full scrcpy distribution and its license notices into the app folder.
 
-`scripts/Build-Installer.ps1` obfuscates the release's PhoneControl DLL before running its regression suite and packaging it. For an obfuscated portable folder, use `scripts/Publish.ps1 -Obfuscate`; ordinary builds/publishes keep readable symbols for debugging. Private originals/rename mappings remain in ignored `artifacts/obfuscation` and are not shipped, while the readable corresponding source and obfuscation configuration are always bundled under the AGPL. Obfuscation does not restrict modification/rebuilding or prevent decompilation. With a trusted certificate, pass `-SignTool` and `-CertificateThumbprint` to the installer builder to sign and verify the app EXE/DLL and installers after obfuscation. Signing identifies the publisher and detects changes; it does not hide code. See [release guidance](docs/distribution.md).
+`scripts/Build-Installer.ps1` obfuscates the release's PhoneControl DLL before running its regression suite and packaging it. For an obfuscated portable folder, use `scripts/Publish.ps1 -Obfuscate`; ordinary builds/publishes keep readable symbols for debugging. Private originals/rename mappings remain in ignored `artifacts/obfuscation` and are not shipped, while the readable corresponding source and obfuscation configuration are always bundled under the AGPL. Obfuscation does not restrict modification/rebuilding or prevent decompilation. See [release guidance](docs/distribution.md).
 
 ```powershell
 $test = Start-Process .\artifacts\PhoneControl\PhoneControl.exe -ArgumentList --self-test -Wait -PassThru
@@ -112,6 +108,8 @@ Samsung Game Booster can dim and lock game touch input after idle time. If its t
 ## Architecture and maintenance
 
 `DeviceSession` manages two scrcpy sessions: the official GPU-rendered video/audio client with control disabled, and a control-only Android server speaking scrcpy 4.1's documented binary protocol. A unique loopback ADB forward isolates the control channel. Temporary server JARs and the app's own forward are removed on a normal disconnect.
+
+Phone discovery, sessions, input, frame capture and USB driver repair use [ports and adapters](docs/architecture.md). The current Android backend discovers devices across vendors; Samsung driver repair is one registered adapter. Other HUDs need calibration, other handsets remain unverified, and the experimental [iPhone backend](docs/iphone.md) requires an externally prepared WebDriverAgent server. Continuous gameplay fingers and audio are unavailable on iPhone. No phone-specific display fallback or saved-profile replacement is used.
 
 `InputEngine` handles focus, key edges, independent fingers, joystick diagonals, tap timing, camera swipes, and cursor release. `MappingOverlay` is a lightweight native layered window, leaving video frames in scrcpy's native decode/render path. The settings/dashboard interface is WinUI 3. The video window is deliberately separate so native fullscreen and resizing keep working.
 

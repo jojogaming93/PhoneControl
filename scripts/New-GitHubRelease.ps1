@@ -23,7 +23,6 @@ $files = @(
 }
 $manifest = Get-Content -LiteralPath $files[3] -Raw | ConvertFrom-Json
 if ($manifest.version -ne $Version -or $manifest.sourceCommit -ne $Commit) { throw 'Release manifest does not match the version/source commit.' }
-if ($manifest.signed -ne $false -or $manifest.signingMode -ne 'unsigned-validation') { throw 'This workflow currently supports unsigned validation drafts only.' }
 $installerHash = (Get-FileHash -LiteralPath $files[0] -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($installerHash -ne $manifest.installerSha256 -or
     (Get-Content -LiteralPath $files[1] -Raw).Trim() -ne "$installerHash  $([IO.Path]::GetFileName($files[0]))" -or
@@ -45,8 +44,6 @@ $notesPath = Join-Path $ArtifactDirectory 'release-notes.md'
 @"
 PhoneControl $Version for Intel/AMD x64 Windows 11 24H2 or newer.
 
-**Unsigned validation build — trusted code signing is pending. Keep this release in draft until the public signing requirements are met.**
-
 Download ``PhoneControl-Setup-$Version-win-x64.exe`` to install. The installer bundles the required runtimes and USB tools. Saved profiles survive updates and uninstall.
 
 The corresponding editable source ZIP, SHA-256 checksum and build manifest are attached. PhoneControl is licensed under AGPL-3.0-only; bundled components retain their own notices.
@@ -56,9 +53,9 @@ Source commit: $Commit
 if ($existing) {
     & gh release upload $Tag @files --repo $Repository --clobber
     if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
-    & gh release edit $Tag --repo $Repository --title "PhoneControl $Version (unsigned validation)" --notes-file $notesPath --draft --prerelease --latest=false
+    & gh release edit $Tag --repo $Repository --title "PhoneControl $Version" --notes-file $notesPath --draft --prerelease --latest=false
 } else {
-    & gh release create $Tag @files --repo $Repository --target $Commit --title "PhoneControl $Version (unsigned validation)" --notes-file $notesPath --draft --prerelease --latest=false
+    & gh release create $Tag @files --repo $Repository --target $Commit --title "PhoneControl $Version" --notes-file $notesPath --draft --prerelease --latest=false
 }
 if ($LASTEXITCODE -ne 0) { throw 'GitHub draft release creation/update failed.' }
 Write-Output "Draft release with installer: https://github.com/$Repository/releases"

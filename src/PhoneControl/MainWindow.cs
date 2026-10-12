@@ -16,16 +16,21 @@ public sealed class MainWindow : Window
     private readonly Settings settings = Settings.Load();
     private readonly StackPanel body = new() { Spacing = 18 };
     private readonly TextBlock status = Text("Ready to connect", 14);
-    private readonly TextBlock stats = Text("USB • H.264 • 120 FPS cap", 12);
+    private readonly TextBlock stats = Text("Choose a phone connection", 12);
     private readonly TextBlock hint = Text("", 13);
+    private readonly TextBlock shortcuts = Text("", 12);
     private readonly TextBox diagnostics = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 360 };
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer uiTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer deviceTimer;
     private readonly CancellationTokenSource shutdown = new();
-    private bool refreshing, repairingDriver, driverAttempted, autoSuppressed;
-    private string? attemptedSerial;
-    private ToolPaths? tools;
-    private DeviceSession? session;
+    private bool refreshing, repairingDriver, autoSuppressed;
+    private readonly HashSet<IUsbDriverSupport> driverAttempts = new();
+    private string? attemptedDeviceId;
+    private readonly IReadOnlyList<PhoneBackendRegistration> backends;
+    private PhoneBackendRegistration selectedBackend;
+    private IPhoneBackend backend;
+    private IReadOnlyList<IUsbDriverSupport> driverSupport => selectedBackend.Drivers;
+    private IPhoneSession? session;
     private InputEngine? input;
     private DrivingModeMonitor? drivingMonitor;
     private bool editingDriving;
@@ -33,7 +38,7 @@ public sealed class MainWindow : Window
     private MappingOverlay? overlay;
     private RawInputReader? rawInput;
     private ComboBox? devices;
-    private readonly List<DeviceInfo> discovered = new();
+    private readonly List<PhoneDevice> discovered = new();
     private readonly Dictionary<Binding, (NumberBox X, NumberBox Y)> positionEditors = new();
     private int selected = -1;
     private int currentPage;
@@ -42,8 +47,11 @@ public sealed class MainWindow : Window
     private NumberBox? joyX, joyY, lookX, lookY;
     private readonly Button connectButton = Button("Connect phone", null);
 
-    public MainWindow()
+    public MainWindow(IReadOnlyList<PhoneBackendRegistration> backends)
     {
+        this.backends = backends;
+        selectedBackend = backends.FirstOrDefault(b => b.Key == settings.PhoneBackend) ?? backends[0];
+        backend = selectedBackend.Create(settings.IPhoneEndpoint);
         settings.Profile.EnsureDrivingLayout();
         Title = "PhoneControl";
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "assets", "phonecontrol.ico"));
@@ -67,11 +75,11 @@ public sealed class MainWindow : Window
         }
         side.Children.Add(new Border { Height = 28 });
         side.Children.Add(status); side.Children.Add(stats);
-        side.Children.Add(Text("Left Alt   capture / release mouse\nF8    edit mappings\nF9    pause / resume controls\nEsc   release mouse\nF11   fullscreen phone view", 12));
+        side.Children.Add(shortcuts);
         side.Children.Add(new Border { Height = 32 });
         side.Children.Add(Text($"PhoneControl v{AppInfo.Version}", 13, true));
         side.Children.Add(Text(AppInfo.Copyright, 11));
-        side.Children.Add(Text("Open source · GNU AGPLv3\nWinUI 3 · .NET 10\nUSB streaming via scrcpy 4.1", 11));
+        side.Children.Add(Text("Open source · GNU AGPLv3\nWinUI 3 · .NET 10\nAndroid USB · experimental iPhone", 11));
         root.Children.Add(side);
         var content = new ScrollViewer { Content = body, Padding = new Thickness(34, 28, 34, 32), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetColumn(content, 1); root.Children.Add(content); Content = root;
@@ -87,8 +95,7 @@ public sealed class MainWindow : Window
             await Disconnect();
             Close();
         };
-        connectButton.Click += async (_, _) => { autoSuppressed = session is not null; attemptedSerial = null; await ToggleConnection(); };
-        try { tools = new ToolPaths(); Log.Write("Tools: " + tools.Scrcpy); } catch (Exception e) { Log.Write(e.Message); }
+        connectButton.Click += async (_, _) => { autoSuppressed = session is not null; attemptedDeviceId = null; await ToggleConnection(); };
         Navigate(0);
         _ = RefreshDevices();
     }
@@ -158,6 +165,9 @@ public sealed class MainWindow : Window
     };
     private void Navigate(int page)
     {
+        shortcuts.Text = selectedBackend.SupportsRealtimeTouch ?
+            "Left Alt   capture / release mouse\nF8    edit mappings\nF9    pause / resume controls\nEsc   release mouse\nF11   fullscreen phone view" :
+            "iPhone view\nClick   tap\nDrag   swipe\nHold   long press up to 2 s\nHome   return to Home screen";
         foreach (var reused in new FrameworkElement[] { hint, diagnostics, connectButton })
             if (reused.Parent is Panel parent) parent.Children.Remove(reused);
         currentPage = page; body.Children.Clear(); positionEditors.Clear(); joyX = joyY = lookX = lookY = null;
@@ -169,16 +179,39 @@ public sealed class MainWindow : Window
     }
     private void ConnectionPage()
     {
-        Heading("A direct line to your phone", "Fast USB video, precise touch controls, and a layout you can make your own.");
+        Heading("A direct line to your phone", "Android USB controls and an experimental iPhone screenshot view.");
         var card = new StackPanel { Spacing = 16 };
         card.Children.Add(Text("01  CONNECT YOUR DEVICE", 12, true));
-        devices = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose an Android phone" };
+        var platform = new ComboBox { Header = "Phone connection", ItemsSource = backends.Select(b => b.Label).ToArray(),
+            SelectedIndex = backends.ToList().IndexOf(selectedBackend), IsEnabled = session is null && !busy };
+        platform.SelectionChanged += async (_, _) => {
+            if (session is not null || busy || repairingDriver) { hint.Text = "Disconnect before changing the phone connection."; platform.SelectedIndex = backends.ToList().IndexOf(selectedBackend); return; }
+            if (platform.SelectedIndex < 0) return;
+            selectedBackend = backends[platform.SelectedIndex]; backend = selectedBackend.Create(settings.IPhoneEndpoint);
+            settings.PhoneBackend = selectedBackend.Key; attemptedDeviceId = null; autoSuppressed = false;
+            discovered.Clear(); Save(); Navigate(0); hint.Text = "Checking the selected phone connection…"; await RefreshDevices();
+        };
+        card.Children.Add(platform);
+        if (selectedBackend.UsesAddress) {
+            var endpoint = new TextBox { Header = "Server address", Text = settings.IPhoneEndpoint, IsEnabled = session is null && !busy };
+            card.Children.Add(endpoint);
+            card.Children.Add(Button("Use address", async (_, _) => {
+                if (session is not null || busy || repairingDriver) return;
+                try {
+                    settings.IPhoneEndpoint = selectedBackend.NormalizeAddress?.Invoke(endpoint.Text) ?? endpoint.Text.Trim();
+                    backend = selectedBackend.Create(settings.IPhoneEndpoint); discovered.Clear(); attemptedDeviceId = null;
+                    Save(); PopulateDevices(); await RefreshDevices();
+                } catch (Exception e) { hint.Text = e.Message; }
+            }));
+        }
+        devices = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a phone" };
         PopulateDevices(); card.Children.Add(devices);
-        card.Children.Add(Row(connectButton, Button("Refresh devices", async (_, _) => { attemptedSerial = null; await RefreshDevices(); }),
+        card.Children.Add(Row(connectButton, Button("Refresh devices", async (_, _) => { attemptedDeviceId = null; await RefreshDevices(); }),
             Button("Show phone", (_, _) => { if (session?.MirrorWindow > 0) Native.SetForegroundWindow(session.MirrorWindow); })));
         card.Children.Add(hint); body.Children.Add(Card(card));
+        if (selectedBackend.SupportsRealtimeTouch) {
         var automatic = new ToggleSwitch { Header = "Connect automatically when one authorized USB phone is found", IsOn = settings.AutoConnect };
-        automatic.Toggled += (_, _) => { settings.AutoConnect = automatic.IsOn; autoSuppressed = false; attemptedSerial = null; Save(); };
+        automatic.Toggled += (_, _) => { settings.AutoConnect = automatic.IsOn; autoSuppressed = false; attemptedDeviceId = null; Save(); };
         body.Children.Add(automatic);
         var gameplay = new ComboBox { Header = "Control layout", Width = 290 };
         foreach (string value in new[] { "Auto", "On foot", "Driving" }) gameplay.Items.Add(value);
@@ -186,56 +219,67 @@ public sealed class MainWindow : Window
         gameplay.SelectionChanged += (_, _) => { settings.GameplayMode = (string)gameplay.SelectedItem; input?.SetModeOverride(settings.GameplayMode); Save(); };
         body.Children.Add(gameplay);
         body.Children.Add(Text("Auto checks the active phone view every 50 ms and switches as soon as the vehicle arrows appear. Driving has its own editable mappings. If you change the game HUD, use a manual layout here.", 12));
-        body.Children.Add(Row(Button("Repair Samsung USB driver", async (_, _) => await RepairDriver()), Button("Open offline guide", (_, _) => {
+        }
+        var repairs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        foreach (var driver in driverSupport)
+            repairs.Children.Add(Button("Repair " + driver.DisplayName, async (_, _) => await RepairDriver(driver)));
+        repairs.Children.Add(Button("Open offline guide", (_, _) => {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "docs", "index.html")) { UseShellExecute = true });
-        })));
-        body.Children.Add(Card(Text($"02  PLAY\n\nClick the phone view to give it focus. Left Alt captures your mouse for aiming. Move with {settings.Profile.Up} / {settings.Profile.Left} / {settings.Profile.Down} / {settings.Profile.Right}; mouse buttons activate your mapped actions. Press Esc to release your mouse and click menus normally.\n\nF8 puts the phone view into mapping edit mode. Select or drag the circles to match your HUD. F9 pauses all touch controls.", 15)));
-        body.Children.Add(Card(Text("First phone setup\n\nConnect a data-capable USB cable and unlock the phone. On Samsung: Settings → About phone → Software information → tap Build number seven times. In Developer options, enable USB debugging. Accept ‘Allow USB debugging?’ on the handset; ‘Always allow from this computer’ remembers your choice. PhoneControl cannot approve this Android security prompt for you.\n\nDevices are detected automatically. A Samsung USB interface reporting a missing driver starts official driver repair once; Windows may request administrator approval. You can also use Repair Samsung USB driver. Other phone brands need their manufacturer's driver.\n\nDismiss Samsung’s idle touch-protection overlay before playing. A 120 FPS cap cannot increase the game’s own frame rate. The live counter reports actual mirrored frames.", 14)));
+        }));
+        body.Children.Add(repairs);
+        if (selectedBackend.SupportsRealtimeTouch) body.Children.Add(Card(Text($"02  PLAY\n\nClick the phone view to give it focus. Left Alt captures your mouse for aiming. Move with {settings.Profile.Up} / {settings.Profile.Left} / {settings.Profile.Down} / {settings.Profile.Right}; mouse buttons activate your mapped actions. Press Esc to release your mouse and click menus normally.\n\nF8 puts the phone view into mapping edit mode. Select or drag the circles to match your HUD. F9 pauses all touch controls.", 15)));
+        body.Children.Add(Card(Text(selectedBackend.SetupHelp, 14)));
     }
     private async Task RefreshDevices()
     {
         if (closing || refreshing || busy || repairingDriver || session is not null) return;
-        if (tools is null) { hint.Text = "An installed component is missing. Run the PhoneControl installer again to repair the app."; return; }
         refreshing = true;
+        var discoveringBackend = backend;
         try {
-            var found = await DeviceSession.Devices(tools);
-            if (closing || repairingDriver) return;
-            if (attemptedSerial is not null && !found.Any(d => d.Serial == attemptedSerial)) { attemptedSerial = null; autoSuppressed = false; }
-            string? selectedSerial = devices?.SelectedIndex is int index && index >= 0 && index < discovered.Count ? discovered[index].Serial : null;
+            var found = await discoveringBackend.DiscoverDevices();
+            if (closing || repairingDriver || !ReferenceEquals(discoveringBackend, backend)) return;
+            if (attemptedDeviceId is not null && !found.Any(d => d.Id == attemptedDeviceId)) { attemptedDeviceId = null; autoSuppressed = false; }
+            string? selectedDeviceId = devices?.SelectedIndex is int index && index >= 0 && index < discovered.Count ? discovered[index].Id : null;
             bool changed = !discovered.SequenceEqual(found);
             discovered.Clear(); discovered.AddRange(found);
-            if (changed) { PopulateDevices(); if (selectedSerial is not null && devices is not null) { int old = discovered.FindIndex(d => d.Serial == selectedSerial); if (old >= 0) devices.SelectedIndex = old; } }
-            hint.Text = discovered.Count == 0 ? "Waiting for a phone. Connect USB, unlock it, and enable USB debugging." :
-                discovered.Any(d => d.State == "device") ? "Phone ready. Connect to start streaming." :
-                discovered.Any(d => d.State == "unauthorized") ? "Accept ‘Allow USB debugging?’ on the phone. Detection continues automatically." : "Phone is offline. Unlock it and reconnect the USB cable.";
-            if (discovered.Count == 0 && !driverAttempted && await Task.Run(SamsungDriver.HasMissingDriver)) {
-                driverAttempted = true; await RepairDriver();
+            if (changed) { PopulateDevices(); if (selectedDeviceId is not null && devices is not null) { int old = discovered.FindIndex(d => d.Id == selectedDeviceId); if (old >= 0) devices.SelectedIndex = old; } }
+            hint.Text = discovered.Count == 0 ? "Waiting for a phone. Check the setup instructions for this connection." :
+                discovered.Any(d => d.State == PhoneDeviceState.Ready) ? "Phone ready. Connect to start streaming." :
+                discovered.Any(d => d.State == PhoneDeviceState.Unauthorized) ? "Accept ‘Allow USB debugging?’ on the phone. Detection continues automatically." :
+                selectedBackend.UsesAddress ? "The phone server is not ready. Check the address and setup instructions." : "Phone is offline. Unlock it and reconnect the USB cable.";
+            foreach (var driver in driverSupport) {
+                if (closing) return;
+                if (discovered.Count == 0 && !driverAttempts.Contains(driver) && await Task.Run(driver.HasMissingDriver) && ReferenceEquals(discoveringBackend, backend))
+                    await RepairDriver(driver);
             }
             if (!closing && settings.AutoConnect && !autoSuppressed && ConnectionPolicy.CanAutoConnect(discovered) &&
-                attemptedSerial != discovered[0].Serial && currentPage == 0) {
-                attemptedSerial = discovered[0].Serial;
+                attemptedDeviceId != discovered[0].Id && currentPage == 0) {
+                attemptedDeviceId = discovered[0].Id;
                 await ToggleConnection();
             }
-        } catch (Exception e) { hint.Text = e.Message; Log.Write(e.Message); }
-        finally { refreshing = false; }
+        } catch (Exception e) { if (ReferenceEquals(discoveringBackend, backend)) { hint.Text = e.Message; Log.Write(e.Message); } }
+        finally {
+            refreshing = false;
+            if (!closing && !ReferenceEquals(discoveringBackend, backend)) _ = RefreshDevices();
+        }
     }
-    private async Task RepairDriver()
+    private async Task RepairDriver(IUsbDriverSupport driver)
     {
         if (closing || repairingDriver || busy || session is not null) return;
-        repairingDriver = true; driverAttempted = true; connectButton.IsEnabled = false;
-        hint.Text = "Downloading the official Samsung USB driver. Windows may ask for administrator approval…";
+        repairingDriver = true; driverAttempts.Add(driver); connectButton.IsEnabled = false;
+        hint.Text = $"Downloading the official {driver.DisplayName}. Windows may ask for administrator approval…";
         try {
-            await SamsungDriver.Install(shutdown.Token);
+            await driver.Install(shutdown.Token);
             if (!closing) hint.Text = "Driver setup finished. Reconnect USB if needed, then approve USB debugging on the handset.";
-        } catch (OperationCanceledException) { if (!closing) hint.Text = "Driver download cancelled. You can retry Repair Samsung USB driver."; }
+        } catch (OperationCanceledException) { if (!closing) hint.Text = $"Driver download cancelled. You can retry Repair {driver.DisplayName}."; }
         catch (Exception e) { if (!closing) hint.Text = "Driver repair needs attention: " + e.Message; Log.Write(e.ToString()); }
         finally { repairingDriver = false; if (!closing) connectButton.IsEnabled = true; }
     }
     private void PopulateDevices()
     {
         if (devices is null || currentPage != 0) return;
-        devices.Items.Clear(); foreach (var d in discovered) devices.Items.Add($"{d.Serial} • {d.State} • {d.Description.Replace('_', ' ')}");
-        if (discovered.Count > 0) devices.SelectedIndex = Math.Max(0, discovered.FindIndex(d => d.State == "device"));
+        devices.Items.Clear(); foreach (var d in discovered) devices.Items.Add($"{d.Id} • {d.State} • {d.Description.Replace('_', ' ')}");
+        if (discovered.Count > 0) devices.SelectedIndex = Math.Max(0, discovered.FindIndex(d => d.State == PhoneDeviceState.Ready));
     }
     private async Task ToggleConnection()
     {
@@ -243,26 +287,31 @@ public sealed class MainWindow : Window
         busy = true; connectButton.IsEnabled = false;
         try {
             if (session is not null) { await Disconnect(); return; }
-            if (tools is null) throw new IOException("Run the PhoneControl installer again to repair missing components.");
             int index = devices?.SelectedIndex ?? -1;
             if (index < 0 || index >= discovered.Count) throw new IOException("Select an authorized phone first.");
-            settings.Profile.Validate(); settings.Save(); status.Text = "Connecting…"; hint.Text = "Opening video and multitouch control channels…";
-            var pending = new DeviceSession(tools);
+            settings.Profile.Validate(); settings.Save(); status.Text = "Connecting…"; hint.Text = "Opening the phone view and control session…";
+            var pending = backend.CreateSession();
             pending.Statistics += line => DispatcherQueue.TryEnqueue(() => stats.Text = line);
-            try { await pending.Connect(discovered[index], settings); }
-            catch { pending.Dispose(); throw; }
+            try { await pending.Connect(discovered[index], new(settings.MaxFps, settings.MaxSize, settings.BitrateMbps, settings.Audio), shutdown.Token); }
+            catch { try { await pending.Disconnect(); } finally { pending.Dispose(); } throw; }
             if (closing) { await pending.Disconnect(); pending.Dispose(); return; }
             session = pending;
-            input = new InputEngine(session, settings.Profile);
-            input.SetModeOverride(settings.GameplayMode);
-            input.StateChanged += () => DispatcherQueue.TryEnqueue(UpdateStatus);
-            input.EditPoint += (x, y, first) => DispatcherQueue.TryEnqueue(() => PlaceMapping(x, y, first));
-            session.GeometryChanged += input.Reset;
-            session.Fault += error => DispatcherQueue.TryEnqueue(async () => { if (!closing && session is not null && !busy) { Log.Write(error); await Disconnect(); hint.Text = error; } });
-            overlay = new MappingOverlay();
-            rawInput = new RawInputReader(WinRT.Interop.WindowNative.GetWindowHandle(this), input); input.Start();
-            drivingMonitor = new DrivingModeMonitor(session, input);
-            connectButton.Content = "Disconnect"; hint.Text = "Connected. Click the phone view, then press Left Alt to aim."; UpdateStatus();
+            session.Fault += error => DispatcherQueue.TryEnqueue(async () => { if (!closing && ReferenceEquals(session, pending) && !busy) { Log.Write(error); await Disconnect(); hint.Text = error; } });
+            if (session.SupportsRealtimeTouch) {
+                input = new InputEngine(session.RealtimeInput!, settings.Profile);
+                input.SetModeOverride(settings.GameplayMode);
+                input.StateChanged += () => DispatcherQueue.TryEnqueue(UpdateStatus);
+                input.EditPoint += (x, y, first) => DispatcherQueue.TryEnqueue(() => PlaceMapping(x, y, first));
+                session.GeometryChanged += input.Reset;
+                overlay = new MappingOverlay();
+                rawInput = new RawInputReader(WinRT.Interop.WindowNative.GetWindowHandle(this), input); input.Start();
+                drivingMonitor = new DrivingModeMonitor(session, session, input);
+                hint.Text = "Connected. Click the phone view, then press Left Alt to aim."; UpdateStatus();
+            } else {
+                status.Text = "iPhone • completed gestures";
+                hint.Text = "Connected. Use the iPhone view to tap, drag, long-press or go Home. Continuous gameplay mappings are unavailable.";
+            }
+            connectButton.Content = "Disconnect";
             Native.SetForegroundWindow(session.MirrorWindow);
         } catch (Exception e) {
             if (session is not null) await Disconnect();
@@ -278,8 +327,8 @@ public sealed class MainWindow : Window
         rawInput?.Dispose(); rawInput = null; input?.Dispose(); input = null; overlay?.Dispose(); overlay = null;
         var old = session; session = null;
         if (monitor is not null) await monitor.Stop();
-        if (old is not null) await old.Disconnect();
-        connectButton.Content = "Connect phone"; status.Text = "Disconnected"; stats.Text = "USB • H.264 • no added video buffer";
+        if (old is not null) { try { await old.Disconnect(); } finally { old.Dispose(); } }
+        connectButton.Content = "Connect phone"; status.Text = "Disconnected"; stats.Text = "Choose a phone connection";
     }
     private void UpdateStatus()
     {
@@ -312,12 +361,14 @@ public sealed class MainWindow : Window
     private void Edit(int selection)
     {
         selected = selection;
+        if (session is not null && !session.SupportsRealtimeTouch) { hint.Text = "This backend uses completed gestures in its viewer. Gameplay mapping is unavailable."; return; }
         if (input is null || session is null) { hint.Text = "Connect your phone first, then use Pick on phone."; return; }
         input.SetEditing(true, editingDriving); Native.SetForegroundWindow(session.MirrorWindow);
     }
     private void ControlsPage()
     {
         Heading("Make every key feel right", "Positions are percentages of the phone screen. Drag markers on the live view or enter coordinates here.");
+        if (!selectedBackend.SupportsRealtimeTouch) body.Children.Add(Text("These saved mappings are for continuous gameplay backends. The iPhone viewer uses completed pointer gestures; gameplay mapping is unavailable for this connection.", 14));
         profileName = new TextBox { Header = "Profile name", Text = settings.Profile.Name };
         profileName.TextChanged += (_, _) => settings.Profile.Name = profileName.Text;
         body.Children.Add(profileName);
@@ -399,6 +450,10 @@ public sealed class MainWindow : Window
     private void SettingsPage()
     {
         Heading("Tune the stream", "Changes apply on the next connection. Start with 1920 px, H.264, and a 120 FPS cap.");
+        if (!selectedBackend.SupportsRealtimeTouch) {
+            body.Children.Add(Card(Text("iPhone uses sequential PNG screenshots at up to 8 refreshes/s and completed gestures. H.264 size/bitrate and audio settings apply to Android; iPhone has no audio stream or continuous game input. The actual refresh rate depends on WebDriverAgent and the device.", 14)));
+            return;
+        }
         var card = new StackPanel { Spacing = 18 };
         card.Children.Add(Number("Frame rate cap", settings.MaxFps, 30, 240, v => settings.MaxFps = (int)v, 220));
         card.Children.Add(Number("Maximum edge (pixels)", settings.MaxSize, 720, 3840, v => settings.MaxSize = (int)v, 220));
@@ -410,7 +465,7 @@ public sealed class MainWindow : Window
     private void DiagnosticsPage()
     {
         Heading("Connection diagnostics", "Local logs help troubleshoot USB, video, and touch control errors.");
-        body.Children.Add(Row(Button("Refresh ADB", async (_, _) => await RefreshDevices()), Button("Open log folder", (_, _) => {
+        body.Children.Add(Row(Button("Refresh phones", async (_, _) => await RefreshDevices()), Button("Open log folder", (_, _) => {
             Directory.CreateDirectory(Settings.DirectoryPath); System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Settings.DirectoryPath) { UseShellExecute = true });
         })));
         body.Children.Add(hint);

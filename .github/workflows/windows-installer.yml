@@ -44,25 +44,25 @@ jobs:
           python docs/generate_fixtures.py
           python docs/build.py
           python scripts/Check-PublicSource.py
-      - name: Build unsigned validation installer (not for public distribution)
+      - name: Build Windows installer
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: ./scripts/Build-Installer.ps1 -Version $env:RELEASE_VERSION -AllowUnsigned
+        run: ./scripts/Build-Installer.ps1 -Version $env:RELEASE_VERSION
       - name: Verify install, repair, uninstall and retained profiles
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: ./scripts/Test-Installer.ps1 -Installer "artifacts/unsigned-validation/PhoneControl-Setup-$env:RELEASE_VERSION-win-x64.exe"
+        run: ./scripts/Test-Installer.ps1 -Installer "artifacts/releases/PhoneControl-Setup-$env:RELEASE_VERSION-win-x64.exe"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: PhoneControl-unsigned-validation-x64
+          name: PhoneControl-installer-x64
           path: |
-            artifacts/unsigned-validation/PhoneControl-Setup-*.exe
-            artifacts/unsigned-validation/PhoneControl-*-source.zip
-            artifacts/unsigned-validation/*.sha256
-            artifacts/unsigned-validation/*-manifest.json
+            artifacts/releases/PhoneControl-Setup-*.exe
+            artifacts/releases/PhoneControl-*-source.zip
+            artifacts/releases/*.sha256
+            artifacts/releases/*-manifest.json
             artifacts/installer-test-*/installer-results.txt
             artifacts/installer-test-*/self-test-results.txt
             artifacts/installer-test-*/*.log
@@ -72,10 +72,10 @@ jobs:
         with:
           name: PhoneControl-release-files
           path: |
-            artifacts/unsigned-validation/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe
-            artifacts/unsigned-validation/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe.sha256
-            artifacts/unsigned-validation/PhoneControl-${{ steps.version.outputs.version }}-source.zip
-            artifacts/unsigned-validation/PhoneControl-${{ steps.version.outputs.version }}-manifest.json
+            artifacts/releases/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe
+            artifacts/releases/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe.sha256
+            artifacts/releases/PhoneControl-${{ steps.version.outputs.version }}-source.zip
+            artifacts/releases/PhoneControl-${{ steps.version.outputs.version }}-manifest.json
           if-no-files-found: error
   release:
     needs: installer

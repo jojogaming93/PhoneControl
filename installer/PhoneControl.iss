@@ -50,6 +50,7 @@ VersionInfoCopyright=Copyright (c) 2026 jojogaming93
 ; User mappings live separately under {localappdata}\PhoneControl.
 Type: files; Name: "{app}\docs\images\*.png"
 Type: files; Name: "{app}\docs\profiles\*.json"
+Type: files; Name: "{app}\docs\signing-application.md"
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,self-test-results.txt,release-manifest.json,\tools\scrcpy\*"

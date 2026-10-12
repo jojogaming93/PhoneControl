@@ -12,11 +12,12 @@ Open [index.html](index.html) for the offline website, interactive HUD atlas, se
 | [hud.md](hud.md) | Exact normalized coordinates, pixel conversion, starter and saved layouts |
 | [controls.md](controls.md) | Input modes, sprint, aiming, calibration and profile behavior |
 | [technical.md](technical.md) | USB sessions, packet layout, pointer identities, raw input and cleanup |
+| [architecture.md](architecture.md) | Phone backend ports, Android/vendor adapters and extension contracts |
+| [iphone.md](iphone.md) | Experimental WDA screenshots and completed gestures; testing without an iPhone |
 | [lessons-learned.md](lessons-learned.md) | Failed approaches, root causes and reusable debugging lessons |
 | [verification.md](verification.md) | Evidence, confidence, test coverage and a future test procedure |
 | [maintenance.md](maintenance.md) | Source map, build/publish, Android server rebuild and next work |
 | [distribution.md](distribution.md) | Self-contained installer, device onboarding, driver repair and release gates |
-| [signing-application.md](signing-application.md) | SignPath Foundation application draft and pending approval/integration |
 
 ## Agent handoff
 

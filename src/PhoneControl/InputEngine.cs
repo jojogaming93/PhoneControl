@@ -8,7 +8,7 @@ namespace PhoneControl;
 // All game gestures share one persistent socket. No ADB subprocess is started for a key or mouse event.
 public sealed class InputEngine : IDisposable
 {
-    private readonly DeviceSession session;
+    private readonly IPhoneInput session;
     private readonly CancellationTokenSource stop = new();
     private readonly object gate = new();
     private Task? loop;
@@ -41,7 +41,10 @@ public sealed class InputEngine : IDisposable
     public NativeRect Viewport { get; private set; }
     public event Action? StateChanged;
     public event Action<double, double, bool>? EditPoint;
-    public InputEngine(DeviceSession session, Profile profile) { this.session = session; this.profile = profile.Copy(); this.profile.EnsureDrivingLayout(); camera = new(session); }
+    public InputEngine(IPhoneInput session, Profile profile) {
+        ArgumentNullException.ThrowIfNull(session);
+        this.session = session; this.profile = profile.Copy(); this.profile.EnsureDrivingLayout(); camera = new(session);
+    }
     public void RecordMotion(ushort flags, int x, int y, int desktopWidth, int desktopHeight)
     {
         lock (gate) {
@@ -206,7 +209,7 @@ public sealed class InputEngine : IDisposable
                 directX = Math.Clamp(px, 0, 1); directY = Math.Clamp(py, 0, 1); session.Touch(2, 2, directX, directY);
             }
             if (direct && !down.Contains(1)) { session.Touch(2, 1, directX, directY); direct = false; }
-            if (Pressed(2)) session.AndroidKey(4);
+            if (Pressed(2)) session.Back();
         }
         previous.Clear(); previous.UnionWith(down);
     }
