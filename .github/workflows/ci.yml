@@ -1,0 +1,67 @@
+name: CI
+on:
+  push:
+    branches: [main, 'feature/**', 'codex/**', 'release/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      - name: Verify generated docs, public source and release automation
+        shell: pwsh
+        run: |
+          python docs/generate_fixtures.py
+          if ($LASTEXITCODE -ne 0) { throw 'Fixture generation failed.' }
+          python docs/build.py
+          if ($LASTEXITCODE -ne 0) { throw 'Guide generation failed.' }
+          git diff --exit-code -- docs
+          if ($LASTEXITCODE -ne 0) { throw 'Commit regenerated documentation and fixtures.' }
+          python scripts/Check-PublicSource.py
+          if ($LASTEXITCODE -ne 0) { throw 'Public source audit failed.' }
+          ./scripts/Test-ReleaseAutomation.ps1
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish Windows application
+        shell: pwsh
+        run: |
+          dotnet publish src/PhoneControl/PhoneControl.csproj -c Release -o artifacts/ci
+          if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
+      - name: Run iPhone protocol checks and full Android/iPhone suite
+        shell: pwsh
+        run: |
+          foreach ($mode in @('--self-test-ios', '--self-test')) {
+            $test = Start-Process ./artifacts/ci/PhoneControl.exe -ArgumentList $mode -WindowStyle Hidden -Wait -PassThru
+            $result = './artifacts/ci/self-test-results.txt'
+            if (Test-Path -LiteralPath $result) {
+              Get-Content -LiteralPath $result
+              Copy-Item -LiteralPath $result -Destination "./artifacts/ci/$($mode.TrimStart('-'))-results.txt"
+            }
+            if ($test.ExitCode -ne 0) { throw "$mode failed with exit code $($test.ExitCode)." }
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: Windows-regression-results
+          path: artifacts/ci/*results.txt
+          if-no-files-found: warn

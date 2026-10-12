@@ -1,58 +1,68 @@
-name: Build Windows installer and release
+name: Reusable tested Windows installer
 on:
-  push:
-    tags:
-      - '[0-9]*.[0-9]*.[0-9]*'
-      - 'v[0-9]*.[0-9]*.[0-9]*'
-  workflow_dispatch:
+  workflow_call:
     inputs:
       version:
-        description: Installer version (major.minor.patch)
+        type: string
         required: true
-        default: '1.0.8'
+      tag:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
+      release_branch:
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
-  group: installer-release-${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+  group: installer-release-${{ inputs.version }}
   cancel-in-progress: false
 jobs:
   installer:
     runs-on: windows-2025
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
       - name: Resolve installer version and release tag
         id: version
         shell: pwsh
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          TAG_NAME: ${{ github.ref_name }}
-          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
         run: |
-          $tag = if ($env:EVENT_NAME -eq 'push') { $env:TAG_NAME } else { $env:INPUT_VERSION }
-          $version = $tag -replace '^v', ''
-          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Version/tag must be major.minor.patch, optionally prefixed with v.' }
-          "version=$version" >> $env:GITHUB_OUTPUT
-          "tag=$tag" >> $env:GITHUB_OUTPUT
+          $release = ./scripts/Resolve-ReleaseVersion.ps1 -EventName push -RefType tag -RefName $env:RELEASE_TAG
+          if ($release.Version -cne $env:RELEASE_VERSION -or $env:RELEASE_COMMIT -notmatch '^[0-9a-f]{40}$') { throw 'Invalid release inputs.' }
+          if ((git rev-parse HEAD) -ne $env:RELEASE_COMMIT) { throw 'Checkout does not match release source.' }
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: '10.0.x'
       - name: Regenerate the offline guide
+        shell: pwsh
         run: |
           python docs/generate_fixtures.py
+          if ($LASTEXITCODE -ne 0) { throw 'Fixture generation failed.' }
           python docs/build.py
+          if ($LASTEXITCODE -ne 0) { throw 'Guide generation failed.' }
+          git diff --exit-code -- docs
+          if ($LASTEXITCODE -ne 0) { throw 'Commit regenerated documentation and fixtures.' }
           python scripts/Check-PublicSource.py
+          if ($LASTEXITCODE -ne 0) { throw 'Public source audit failed.' }
+          ./scripts/Test-ReleaseAutomation.ps1
       - name: Build Windows installer
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: ./scripts/Build-Installer.ps1 -Version $env:RELEASE_VERSION
       - name: Verify install, repair, uninstall and retained profiles
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: ./scripts/Test-Installer.ps1 -Installer "artifacts/releases/PhoneControl-Setup-$env:RELEASE_VERSION-win-x64.exe"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -66,24 +76,29 @@ jobs:
             artifacts/installer-test-*/installer-results.txt
             artifacts/installer-test-*/self-test-results.txt
             artifacts/installer-test-*/*.log
+            artifacts/installer-staging/**/self-test-results.txt
           if-no-files-found: error
       - name: Upload tested release files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: PhoneControl-release-files
           path: |
-            artifacts/releases/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe
-            artifacts/releases/PhoneControl-Setup-${{ steps.version.outputs.version }}-win-x64.exe.sha256
-            artifacts/releases/PhoneControl-${{ steps.version.outputs.version }}-source.zip
-            artifacts/releases/PhoneControl-${{ steps.version.outputs.version }}-manifest.json
+            artifacts/releases/PhoneControl-Setup-${{ inputs.version }}-win-x64.exe
+            artifacts/releases/PhoneControl-Setup-${{ inputs.version }}-win-x64.exe.sha256
+            artifacts/releases/PhoneControl-${{ inputs.version }}-source.zip
+            artifacts/releases/PhoneControl-${{ inputs.version }}-manifest.json
           if-no-files-found: error
   release:
     needs: installer
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: PhoneControl-release-files
@@ -92,6 +107,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ needs.installer.outputs.version }}
-          RELEASE_TAG: ${{ needs.installer.outputs.tag }}
-        run: ./scripts/New-GitHubRelease.ps1 -Version $env:RELEASE_VERSION -Tag $env:RELEASE_TAG -Commit $env:GITHUB_SHA -Repository $env:GITHUB_REPOSITORY -ArtifactDirectory artifacts/release-files
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_BRANCH: ${{ inputs.release_branch }}
+        run: ./scripts/New-GitHubRelease.ps1 -Version $env:RELEASE_VERSION -Tag $env:RELEASE_TAG -Commit $env:RELEASE_COMMIT -Repository $env:GITHUB_REPOSITORY -ArtifactDirectory artifacts/release-files -SourceBranch $env:RELEASE_BRANCH
