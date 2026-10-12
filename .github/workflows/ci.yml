@@ -29,6 +29,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Guide generation failed.' }
           git diff --exit-code -- docs
           if ($LASTEXITCODE -ne 0) { throw 'Commit regenerated documentation and fixtures.' }
+          $changes = @(git status --porcelain)
+          if ($LASTEXITCODE -ne 0 -or $changes.Count -gt 0) { $changes | Write-Output; throw 'Generated source must have a clean Git status.' }
           python scripts/Check-PublicSource.py
           if ($LASTEXITCODE -ne 0) { throw 'Public source audit failed.' }
           ./scripts/Test-ReleaseAutomation.ps1
