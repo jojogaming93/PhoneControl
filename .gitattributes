@@ -1,0 +1,3 @@
+# Generated fixture bytes are audited exactly; keep the SVG's canonical newlines.
+docs/images/*.svg text eol=lf
+docs/fixtures/*.png binary
