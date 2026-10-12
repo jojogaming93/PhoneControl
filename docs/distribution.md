@@ -1,12 +1,33 @@
 # Installation and distribution
 
-## Automatic GitHub release drafts
+## Release branches and automated pipelines
 
-**Implemented:** `.github/workflows/windows-installer.yml` builds and tests the setup `.exe`, then creates a GitHub release draft containing `PhoneControl-Setup-<version>-win-x64.exe`, its `.sha256`, `PhoneControl-<version>-source.zip` and the build manifest. Installer lifecycle failures prevent the release job from running; diagnostic Actions artifacts remain available. This product uses an EXE installer, not an MSI.
+**Implemented:** development uses `feature/*` branches and pull requests into `main`. A release is stabilized on `release/<major.minor.patch>`, with fixes committed there and merged back into `main`. Each release-branch push runs the installer pipeline and creates or refreshes a draft under `v<major.minor.patch>`. Published versions are immutable; subsequent development uses a new release branch/version.
 
-Push a version tag such as `1.0.8` or `v1.0.8`, or choose **Actions → Build Windows installer and release → Run workflow** and enter `1.0.8`. Manual runs use the bare version as the release tag and target the selected source commit. A tag pointing to another commit is rejected. Re-running a version can refresh an existing draft; a published release is never overwritten. The existing published `1.0.7` prerelease is therefore left intact; use a new version for this workflow.
+After these workflow files are merged into `main`, choose **Actions → Start release → Run workflow**, select `main`, and enter an unused version such as `1.0.8`. It creates `release/1.0.8` from the selected main commit and directly invokes the reusable installer workflow. This direct call matters because branch pushes made by the built-in Actions token do not trigger another push workflow. Branch creation refuses an existing branch; rerun **Build Windows installer and release** on that release branch instead. Ordinary maintainer pushes to the branch trigger builds automatically.
 
-`scripts/New-GitHubRelease.ps1` checks the source commit, version and installer/source hashes before uploading. It uses the workflow's built-in GitHub token with `contents: write` confined to the release job. Draft assets are available to repository maintainers for review before publication.
+To start a branch using Git instead, use a checkout of the public repository:
+
+```powershell
+gh auth switch --hostname github.com --user jojogaming93
+git fetch origin main
+git switch -c release/1.0.8 origin/main
+git push --set-upstream origin release/1.0.8
+```
+
+`ci.yml` validates public source, reproducible docs/fixtures and release automation on Ubuntu, and publishes the Windows app and runs isolated iPhone protocol checks plus the full Android/iPhone regression suite on Windows. It runs on main, feature, codex and release branch pushes, all pull requests, and manual dispatches. Fork pull requests receive read-only permissions and cannot create releases.
+
+`release.yml` resolves the version from the branch or tag; `windows-installer.yml` is the shared packaging pipeline. It builds the obfuscated app, runs its regression suite, builds the EXE installer, and tests install, repair, uninstall and profile retention before a separate job can upload a release. Any required failure blocks that upload. Diagnostic Actions artifacts include staging self-test results even if installer compilation was never reached. Local automation checks use mocked Git/GitHub commands and do not mutate remote resources.
+
+Draft assets include `PhoneControl-Setup-<version>-win-x64.exe`, its `.sha256`, `PhoneControl-<version>-source.zip` and the build manifest. Each artifact is tied to the exact checked-out source commit. Release builds for one version are serialized; a superseded branch build skips uploading. Draft updates refresh both assets and the target commit. Review the tested draft in GitHub Releases, then publish it there; publication is a maintainer action. Merge stabilization fixes back into main after release.
+
+Version tags such as `1.0.8` and `v1.0.8` remain supported, as does manual **Build Windows installer and release**. New branch/manual drafts use canonical `v` tags. A manual version must match a selected release branch. Existing remote tags cannot move to a different commit, so postpone tagging until stabilization is complete. An already published version, including its alternative bare/`v` tag spelling, is never overwritten. A draft with a different spelling must be reused via that tag or replaced by a new version.
+
+`scripts/New-GitHubRelease.ps1` checks the source commit, clean source tree, version and installer/source hashes before uploading. The build jobs use `contents: read`; `contents: write` is limited to the branch-creation and release-upload jobs. No additional release token or certificate is required.
+
+**Unknown until an Actions run:** hosted Windows installer lifecycle and desktop-capture acceptance. The existing local full-suite failure at `Native mirror capture classifies driving.png at 640px` remains a failing check; pipelines do not bypass it. iPhone protocol checks use the local mock and do not establish real iPhone acceptance. See [verification evidence](verification.md).
+
+Primary automation references: [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows), and [triggering workflows with the built-in token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
 ## Update 1.0.7 - PhoneControl name
 

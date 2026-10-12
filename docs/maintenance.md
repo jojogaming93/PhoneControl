@@ -65,6 +65,10 @@ Oracle javapath shims can obscure the real JDK location. Supply `-Jdk` or let th
 
 scrcpy protocol/server versions are intentionally pinned. Updating only the renderer, server source or binary message layout is unsafe; update and test both control and video paths deliberately. Licensing/notices are in `THIRD-PARTY-NOTICES.md` and `server/LICENSE.scrcpy`; retain the modified-source header and redistributed notices.
 
+## Release maintenance
+
+Use `feature/*` for development and `release/<major.minor.patch>` for stabilization. [Distribution and pipelines](distribution.md) describes starting a release from main, automated draft creation, validation gates and merging fixes back. Run `./scripts/Test-ReleaseAutomation.ps1` locally to verify version parsing, draft refreshes, immutable releases, source checksums and superseded-build behavior with mocked Git/GitHub commands. Workflow scripts are included in the corresponding source archive. Workflow availability on main requires merging their changes there first.
+
 ## Documentation workflow
 
 End-user distribution now has a self-contained installer and native launcher. Read [distribution.md](distribution.md) before changing release packaging, Windows support, device onboarding or driver repair. Build with `scripts/Build-Installer.ps1`; lifecycle-test in a disposable account/VM with `scripts/Test-Installer.ps1`. The test intentionally refuses to overwrite an existing registered installation. Keep application settings outside the installed folder and retain them during uninstall.
