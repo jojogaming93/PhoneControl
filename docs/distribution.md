@@ -133,7 +133,7 @@ The download is limited to 60 MB and three minutes. A mismatched download is del
 
 ```
 python docs/build.py
-pwsh -File scripts/Build-Installer.ps1 -Version 1.0.6
+pwsh -File scripts/Build-Installer.ps1 -Version 1.1.0
 pwsh -File scripts/Test-Installer.ps1 -Version 1.1.0 -Installer artifacts/releases/PhoneControl-Setup-1.1.0-win-x64.exe
 ```
 
