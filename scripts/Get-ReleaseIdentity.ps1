@@ -7,8 +7,10 @@ $pattern = "^$number\.$number\.$number(?:-(?:alpha\.[a-z][a-z0-9-]*|beta|rc)\.[1
 if ($Version -cnotmatch $pattern) { throw 'Version must be major.minor.patch or an alpha.branch.build.attempt, beta.build.attempt or rc.build.attempt prerelease.' }
 $baseVersion = ($Version -split '-', 2)[0]
 $parts = $baseVersion.Split('.')
-foreach ($part in $parts) {
-    if ($part.Length -gt 5 -or [int]$part -gt 65535) { throw 'Windows version components must fit 0..65535.' }
+for ($index = 0; $index -lt $parts.Length; $index++) {
+    # AssemblyVersion reserves 65535; FileVersion permits it in the patch slot.
+    $maximum = if ($index -lt 2) { 65534 } else { 65535 }
+    if ($parts[$index].Length -gt 5 -or [int]$parts[$index] -gt $maximum) { throw 'Windows/assembly version component exceeds its numeric limit.' }
 }
 $channel = if ($Version.Contains('-')) { ($Version -split '-', 2)[1].Split('.')[0] } else { 'stable' }
 $preview = $channel -ne 'stable'

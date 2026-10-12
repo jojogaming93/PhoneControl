@@ -46,7 +46,9 @@ Reject { Resolve-Preview feature/ios -Run 0 } 'numeric CI run'
 foreach ($bad in @('01.1.0','1.1','1.1.0/extra','1.1.0;echo','1.1.0-alpha','1.1.0-beta.01.1','1.1.0-rc.1.0','1.1.0-beta.1.1+secret')) {
     Reject { & $identityScript -Version $bad } 'Version must'
 }
-Reject { & $identityScript -Version 65536.0.0 } '0..65535'
+Reject { & $identityScript -Version 65536.0.0 } 'numeric limit'
+Reject { & $identityScript -Version 65535.0.0 } 'numeric limit'
+Assert ((& $identityScript -Version 1.1.65535).NumericVersion -ceq '1.1.65535.0') 'The Windows patch slot may use 65535 without changing AssemblyVersion.'
 $stableIdentity = & $identityScript -Version 1.1.0
 $alphaIdentity = & $identityScript -Version $alpha.Version
 Assert ($stableIdentity.NumericVersion -ceq '1.1.0.0' -and $alphaIdentity.NumericVersion -ceq $stableIdentity.NumericVersion) 'Windows resource versions must be numeric and independent of CI IDs.'
@@ -88,6 +90,15 @@ function New-Fixture([string]$Version, [string]$Branch='') {
 function Write-Manifest($Fixture) { $Fixture.Manifest | ConvertTo-Json | Set-Content -LiteralPath $Fixture.ManifestPath }
 function Publish-Fixture($Fixture) { & $publisher -Version $Fixture.Version -Tag $Fixture.Tag -Commit $commit -Repository example/PhoneControl -ArtifactDirectory $Fixture.Directory -SourceBranch $Fixture.Branch }
 $fixture = New-Fixture $alpha.Version feature/ios
+foreach ($candidate in @(
+    (New-Fixture $beta.Version main),
+    (New-Fixture $rc.Version release/1.2.3)
+)) {
+    $mock.Calls.Clear()
+    Publish-Fixture $candidate | Out-Null
+    Assert ([bool]($mock.Calls | Where-Object { $_ -like 'release edit *--draft=false*--prerelease=true*--latest=false*' })) 'Beta and RC builds must publish previews without becoming Latest.'
+}
+$mock.Calls.Clear()
 Publish-Fixture $fixture | Out-Null
 Assert ([bool]($mock.Calls | Where-Object { $_ -like 'release create *--draft*' -and $_ -like "*--target $commit*" })) 'Uploads must start as a private draft of the tested commit.'
 Assert ([bool]($mock.Calls | Where-Object { $_ -like 'release edit *--draft=false*--prerelease=true*--latest=false*' })) 'Alphas must publish as prereleases without becoming Latest.'
