@@ -48,11 +48,9 @@ dotnet build ./src/PhoneControl/PhoneControl.csproj -c Release
 Substitute the numeric release version, such as `1.0.5`, for the placeholder.
 `Publish.ps1` produces readable, unobfuscated binaries by default; `-Obfuscate`
 applies the shipped Obfuscar configuration. The installer builder uses that
-configuration before signing/packaging and bundles the corresponding readable
+configuration before packaging and bundles the corresponding readable
 source regardless of obfuscation. Source availability is required by the license;
-obfuscation does not restrict your right to modify or rebuild the program. An
-unsigned build requires no signing key. Publisher private keys are not needed to
-install or run a modified build.
+obfuscation does not restrict your right to modify or rebuild the program.
 
 The control JAR is prebuilt from scrcpy 4.1; using/building the Windows app needs
 no Java or Android SDK. To modify the control server, follow
