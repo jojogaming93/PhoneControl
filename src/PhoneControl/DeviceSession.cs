@@ -9,8 +9,6 @@ using System.Text.RegularExpressions;
 
 namespace PhoneControl;
 
-public record DeviceInfo(string Serial, string State, string Description);
-
 public sealed class ToolPaths
 {
     public string Scrcpy { get; }
@@ -77,13 +75,8 @@ public static class Processes
     }
 }
 
-public interface ITouchSink
-{
-    void Touch(long pointer, byte action, double x, double y);
-    void ReleaseAll();
-}
-
-public sealed class DeviceSession : ITouchSink, IDisposable
+// Android adapter: ADB lifecycle, scrcpy framing and the control socket stay here.
+public sealed class DeviceSession : IPhoneSession
 {
     private readonly ToolPaths tools;
     private readonly object gate = new();
@@ -94,9 +87,9 @@ public sealed class DeviceSession : ITouchSink, IDisposable
     private string serial = "";
     private int port;
     private string remoteJar = "";
-    private int naturalWidth = 1080, naturalHeight = 2340;
-    private int width = 2340, height = 1080;
-    private int textureWidth = 1920, textureHeight = 886;
+    private int naturalWidth, naturalHeight;
+    private int width, height;
+    private int textureWidth, textureHeight;
     public nint MirrorWindow { get; private set; }
     public int Width => Volatile.Read(ref width);
     public int Height => Volatile.Read(ref height);
@@ -134,28 +127,30 @@ public sealed class DeviceSession : ITouchSink, IDisposable
     internal static DeviceSession ForTransportTest(NetworkStream stream, int width, int height) =>
         new(null!) { stream = stream, width = width, height = height };
 
-    public static async Task<List<DeviceInfo>> Devices(ToolPaths tools)
+    internal static (int Width, int Height) ParseDisplaySize(string output)
     {
-        var output = await Processes.Run(tools.Adb, "devices", "-l");
-        return output.Split('\n').Select(line => Regex.Match(line, @"^(\S+)\s+(device|unauthorized|offline)\b(.*)"))
-            .Where(m => m.Success).Select(m => new DeviceInfo(m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value.Trim())).ToList();
+        // Android's last size is the effective override when one is present.
+        var matches = Regex.Matches(output, @"(\d+)x(\d+)");
+        if (matches.Count == 0 || !int.TryParse(matches[^1].Groups[1].Value, out int w) ||
+            !int.TryParse(matches[^1].Groups[2].Value, out int h) || w < 1 || h < 1 ||
+            w > ushort.MaxValue || h > ushort.MaxValue)
+            throw new IOException("The phone did not report a valid display size. Reconnect it and check diagnostics.");
+        return (w, h);
     }
 
-    public async Task Connect(DeviceInfo device, Settings options)
+    public async Task Connect(PhoneDevice device, PhoneConnectionOptions options)
     {
         if (Connected) throw new InvalidOperationException("Already connected.");
-        if (device.State != "device") throw new IOException("Unlock the phone and accept its USB debugging prompt.");
-        serial = device.Serial;
+        if (device.State != PhoneDeviceState.Ready) throw new IOException("Unlock the phone and accept its USB debugging prompt.");
+        serial = device.Id;
         var versionOutput = await Processes.Run(tools.Scrcpy, "--version");
         var version = Regex.Match(versionOutput, @"scrcpy\s+(\d+\.\d+(?:\.\d+)?)").Groups[1].Value;
         if (version != "4.1") throw new IOException($"This release uses the scrcpy 4.1 protocol. Found {version}. Install 4.1 with Install-Dependencies.ps1.");
         try {
             string size = await Processes.Run(tools.Adb, "-s", serial, "shell", "wm", "size");
-            var matches = Regex.Matches(size, @"(\d+)x(\d+)");
-            if (matches.Count > 0) {
-                naturalWidth = int.Parse(matches[^1].Groups[1].Value); naturalHeight = int.Parse(matches[^1].Groups[2].Value);
-                width = naturalWidth; height = naturalHeight;
-            }
+            (naturalWidth, naturalHeight) = ParseDisplaySize(size);
+            width = textureWidth = naturalWidth;
+            height = textureHeight = naturalHeight;
             string id = Random.Shared.Next(1, int.MaxValue).ToString("x8");
             remoteJar = $"/data/local/tmp/phonecontrol-{id}.jar";
             await Processes.Run(tools.Adb, "-s", serial, "push", tools.ControlServer, remoteJar);
@@ -247,7 +242,9 @@ public sealed class DeviceSession : ITouchSink, IDisposable
             }
         }
     }
-    public void AndroidKey(int code)
+    public void Back() => AndroidKey(4);
+
+    private void AndroidKey(int code)
     {
         lock (gate) {
             if (stream is null) return;

@@ -9,12 +9,13 @@ namespace PhoneControl;
 
 // Download the original vendor installer instead of redistributing proprietary
 // driver files or modifying their signed INF/catalog. Never elevate PhoneControl.
-internal static class SamsungDriver
+internal sealed class SamsungDriver : IUsbDriverSupport
 {
+    public string DisplayName => "Samsung USB driver";
     internal const string Sha256 = "0ECC9E47D836A7CFF7215EC9CDF33DC7F3E416A7D5EDEDAD522B978B2EB84A20";
     private const string DownloadUrl = "https://developer.samsung.com/SDP/file/a2fcaf64-7aa3-49f7-b06f-9e646590d528";
 
-    public static bool HasMissingDriver()
+    public bool HasMissingDriver()
     {
         const uint present = 0x100;
         if (CM_Get_Device_ID_List_SizeW(out uint length, null, present) != 0 || length > 1_000_000) return false;
@@ -28,7 +29,7 @@ internal static class SamsungDriver
         return false;
     }
 
-    public static async Task Install(CancellationToken cancellation)
+    public async Task Install(CancellationToken cancellation)
     {
         using var downloadTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         downloadTimeout.CancelAfter(TimeSpan.FromMinutes(3));

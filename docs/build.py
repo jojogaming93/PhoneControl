@@ -8,7 +8,7 @@ import json
 import re
 
 ROOT = Path(__file__).resolve().parent
-CHAPTERS = [('README','Agent handoff'), ('gameplay','Game observations'), ('hud','HUD & profiles'), ('controls','Playing & calibration'), ('technical','Control protocol'), ('lessons-learned','Lessons learned'), ('verification','Evidence & tests'), ('maintenance','Maintenance'), ('distribution','Install & release'), ('signing-application','Signing application')]
+CHAPTERS = [('README','Agent handoff'), ('gameplay','Game observations'), ('hud','HUD & profiles'), ('controls','Playing & calibration'), ('technical','Control protocol'), ('architecture','Phone backends'), ('lessons-learned','Lessons learned'), ('verification','Evidence & tests'), ('maintenance','Maintenance'), ('distribution','Install & release'), ('signing-application','Signing application')]
 
 def inline(text):
     tokens = []

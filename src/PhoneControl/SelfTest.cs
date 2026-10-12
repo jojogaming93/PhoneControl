@@ -44,12 +44,13 @@ public static class SelfTest
             Check(new Settings().AutoConnect, "Fresh settings enable automatic phone connection");
             Check(!JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(new Settings { AutoConnect = false }))!.AutoConnect,
                 "Automatic connection preference survives serialization");
-            Check(ConnectionPolicy.CanAutoConnect([new("phone", "device", "model:TEST_DEVICE")]), "One authorized USB phone can auto-connect");
-            Check(!ConnectionPolicy.CanAutoConnect([]) && !ConnectionPolicy.CanAutoConnect([new("phone", "unauthorized", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("phone", "offline", "")]), "Absent, unauthorized and offline phones never auto-connect");
-            Check(!ConnectionPolicy.CanAutoConnect([new("phone", "device", ""), new("another", "device", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("127.0.0.1:5555", "device", "")]) &&
-                !ConnectionPolicy.CanAutoConnect([new("emulator-5554", "device", "")]), "Multiple devices, network ADB and emulators require manual selection");
+            Check(ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Ready, "model:TEST_DEVICE", PhoneTransport.Usb)]), "One authorized USB phone can auto-connect");
+            Check(!ConnectionPolicy.CanAutoConnect([]) && !ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Unauthorized, "", PhoneTransport.Usb)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Offline, "", PhoneTransport.Usb)]), "Absent, unauthorized and offline phones never auto-connect");
+            Check(!ConnectionPolicy.CanAutoConnect([new("phone", PhoneDeviceState.Ready, "", PhoneTransport.Usb), new("another", PhoneDeviceState.Ready, "", PhoneTransport.Usb)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("127.0.0.1:5555", PhoneDeviceState.Ready, "", PhoneTransport.Network)]) &&
+                !ConnectionPolicy.CanAutoConnect([new("emulator-5554", PhoneDeviceState.Ready, "", PhoneTransport.Emulator)]), "Multiple devices, network ADB and emulators require manual selection");
+            PhonePortsTest.Run(Check);
             string corruptDriver = Path.GetTempFileName();
             try {
                 File.WriteAllText(corruptDriver, "not an official driver");
@@ -89,7 +90,6 @@ public static class SelfTest
                 var frame = DrivingModeMonitor.DecodeFrame(File.ReadAllBytes(Fixture(fixture.Item1))).GetAwaiter().GetResult();
                 Check(detector.IsDrivingFrame(frame.Pixels, frame.Width, frame.Height) == fixture.Item2, "Synthetic HUD classification: " + fixture.Item1);
             }
-            DrivingDetectionTest.Run(Fixture, Check);
             for (int reconnect = 0; reconnect < 12; reconnect++) {
                 var weak = CreateOverlay();
                 GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
@@ -310,6 +310,9 @@ public static class SelfTest
                 var restarted = new byte[64]; inbound.GetStream().ReadExactly(restarted);
                 Check(restarted[1] == 0 && restarted[33] == 1, "Camera can begin a fresh aim session after cleanup");
             } finally { listener.Stop(); }
+            // Run desktop-capture fixtures after the deterministic controller
+            // and transport checks, which do not depend on desktop visibility.
+            DrivingDetectionTest.Run(Fixture, Check);
             results.Add($"{results.Count} checks passed.");
             File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "self-test-results.txt"), results); return 0;
         } catch (Exception e) {

@@ -7,7 +7,10 @@
 | Source | Responsibility |
 |---|---|
 | src/PhoneControl/Profile.cs | Starter layout, validation, key names, settings, sprint migration, log |
-| src/PhoneControl/DeviceSession.cs | scrcpy discovery/version, ADB sessions, geometry, binary packets, cleanup |
+| src/PhoneControl/PhonePorts.cs | Backend, session, input, mirror, capture and driver contracts |
+| src/PhoneControl/AndroidPhoneBackend.cs | Android device discovery, state/transport normalization and session factory |
+| src/PhoneControl/DeviceSession.cs | Android adapter: scrcpy version, ADB sessions, geometry, binary packets, cleanup |
+| src/PhoneControl/PhonePortsTest.cs | Simulated alternate backend and Android discovery/geometry regressions |
 | src/PhoneControl/InputEngine.cs | Focus, modes, keys/edges, tap timing, movement, action ownership |
 | src/PhoneControl/AimGesture.cs | Camera swipe envelope/renewal and raw-motion accumulator |
 | src/PhoneControl/RawInputReader.cs | WM_INPUT keyboard/mouse parsing and Alt differentiation |

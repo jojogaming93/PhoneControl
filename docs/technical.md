@@ -6,6 +6,8 @@ PhoneControl uses WinUI 3 / .NET 10 for settings and native Win32 input/overlay 
 
 The control path is: Windows Raw Input and key state → InputEngine's 8 ms tick → independent logical fingers → 32-byte touch packets on one persistent TCP stream → loopback ADB forward over USB → Android server → MotionEvent injection → foreground Android application.
 
+The application consumes phone input, lifecycle, capture and discovery ports. `AndroidPhoneBackend` and `DeviceSession` implement the current ADB/scrcpy adapter; vendor driver repair is registered separately. See [phone backend architecture](architecture.md) for contracts and extension guidance. Display geometry comes from the selected phone's effective `wm size`; invalid dimensions abort connection instead of using a handset-specific fallback.
+
 No per-key `adb shell input` process is used for gameplay. ADB shell commands are useful for setup/probes but are not the low-latency multitouch transport. The control socket uses NoDelay and a 250 ms send timeout. Serialized writes share a lock; there is no parallel touch writer reordering packets.
 
 ## Starting the control session

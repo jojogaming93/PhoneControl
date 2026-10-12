@@ -1,5 +1,11 @@
 # Evidence and verification
 
+## Phone adapter refactor - 12 October 2026
+
+**Implemented:** [phone ports and adapters](architecture.md) separate discovery, lifecycle, input, capture and vendor-driver support. **Observed locally:** the Release build completed with zero warnings/errors; the public-source audit passed; the JVM allocator passed 128 renewals and new action presses. The Windows self-test passed 145 checks, including simulated alternate-backend input, geometry/cleanup, capture-port cancellation and existing loopback controller/protocol checks, before failing `Native mirror capture classifies driving.png at 640px`.
+
+The previously published app reproduced the same native desktop-capture failure in this session. This confirms a baseline/environment failure, not a passing full suite. Desktop GDI fixture checks after that failure remain incomplete. No live touches, another-phone acceptance, publishing or installation were performed for this refactor. Existing historical acceptance findings below are unchanged.
+
 ## AGPL release/source checks - 11 October 2026
 
 **Implemented in 1.0.5:** standard AGPLv3-only licensing with `jojogaming93` copyright attribution, source/build instructions and a source ZIP in published/installed releases. **Observed:** the initial 77-file source ZIP's manifest hashes matched every extracted input, a fresh `git init` could repackage that extracted source without a commit, and the extracted C# project built with zero warnings/errors.

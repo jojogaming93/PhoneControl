@@ -11,12 +11,12 @@ public sealed class DrivingModeMonitor
     private readonly CancellationTokenSource stop = new();
     private readonly Task loop;
     internal const int PollMilliseconds = 50;
-    public DrivingModeMonitor(DeviceSession session, InputEngine input)
+    public DrivingModeMonitor(IMirrorSurface surface, IPhoneFrameSource frames, InputEngine input)
     {
         loop = Task.Run(async () => {
             using var mirror = new MirrorFrameCapture();
-            await Run(input, () => mirror.TryCapture(session), async cancellation => {
-                var pixels = await DecodeFrame(await session.CaptureFrame(cancellation), cancellation);
+            await Run(input, () => mirror.TryCapture(surface), async cancellation => {
+                var pixels = await DecodeFrame(await frames.CaptureFrame(cancellation), cancellation);
                 return new HudFrame(pixels.Pixels, pixels.Width, pixels.Height);
             }, stop.Token);
         });
