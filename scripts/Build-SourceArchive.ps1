@@ -18,8 +18,11 @@ $sourceFiles = @($candidates | Sort-Object -Unique | Where-Object {
     ($_ -match '^(src|server|scripts|installer|assets|docs|\.github)/' -and
         $_ -match '\.(cs|csproj|xaml|manifest|json|java|ps1|xml|iss|cpp|h|rc|py|md|html|js|css|png|ico|jpg|svg|jar|yml|yaml)$')
 } | Where-Object { Test-Path -LiteralPath (Join-Path $projectRoot $_) -PathType Leaf })
-foreach ($required in @('LICENSE','SOURCE.md','global.json','version.props','src/PhoneControl/PhoneControl.csproj','src/PhoneControl/MainWindow.cs','scripts/Publish.ps1','scripts/Build-Installer.ps1','scripts/Build-SourceArchive.ps1','assets/phonecontrol-control.jar','server/PointersState.java','server/LICENSE.scrcpy')) {
+foreach ($required in @('LICENSE','SOURCE.md','global.json','version.props','src/PhoneControl/PhoneControl.csproj','src/PhoneControl/Presentation/Windows/MainWindow.cs','scripts/Publish.ps1','scripts/Build-Installer.ps1','scripts/Build-SourceArchive.ps1','assets/phonecontrol-control.jar','server/PointersState.java','server/LICENSE.scrcpy')) {
     if ($required -notin $sourceFiles) { throw "Corresponding source is missing $required" }
+}
+foreach ($required in @('src/PhoneControl/Composition/App.xaml', 'src/PhoneControl/Composition/App.xaml.cs', 'scripts/Check-Architecture.ps1', 'scripts/ArchitectureCheck/ArchitectureCheck.csproj', 'scripts/ArchitectureCheck/Program.cs')) {
+    if ($required -notin $sourceFiles) { throw "Corresponding architecture source is missing $required" }
 }
 Add-Type -AssemblyName System.IO.Compression
 $stream = [IO.File]::Open($outputPath, [IO.FileMode]::Create)

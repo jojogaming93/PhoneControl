@@ -59,6 +59,7 @@ jobs:
           python scripts/Check-PublicSource.py
           if ($LASTEXITCODE -ne 0) { throw 'Public source audit failed.' }
           ./scripts/Test-ReleaseAutomation.ps1
+          ./scripts/Check-Architecture.ps1
       - name: Build Windows installer
         shell: pwsh
         env:

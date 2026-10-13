@@ -8,6 +8,7 @@ if (-not $Version) { [xml]$configuration = Get-Content (Join-Path $projectRoot '
 $identity = & (Join-Path $PSScriptRoot 'Get-ReleaseIdentity.ps1') -Version $Version
 & python (Join-Path $PSScriptRoot 'Check-PublicSource.py')
 if ($LASTEXITCODE -ne 0) { throw 'Public source privacy check failed.' }
+& (Join-Path $PSScriptRoot 'Check-Architecture.ps1')
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $projectRoot "artifacts\$($identity.ProductName)" }
 $outputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 & dotnet publish (Join-Path $projectRoot 'src\PhoneControl\PhoneControl.csproj') -c Release -o $outputDirectory "-p:Version=$Version" "-p:FileVersion=$($identity.NumericVersion)" "-p:AssemblyVersion=$($identity.AssemblyVersion)" "-p:ReleaseChannel=$($identity.Channel)"

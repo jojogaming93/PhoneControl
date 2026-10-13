@@ -1,4 +1,4 @@
-# Phone backends and ports
+# Hexagonal architecture and phone backends
 
 ## Current support
 
@@ -8,19 +8,53 @@
 
 ## Dependency direction
 
-The dashboard is the application's entry adapter. It receives backend registrations containing factories, capabilities, address validation, setup instructions and vendor-driver adapters. `App.OnLaunched` in `Program.cs` is the composition root: it registers `AndroidPhoneBackend` with `SamsungDriver`, and `IosPhoneBackend` without Android driver repair. The user selects the backend at runtime; changing it preserves profile/settings data. Adding another vendor driver does not change dashboard discovery or gameplay gestures.
+The source lives under `src/PhoneControl/`. Each top-level class, interface, enum and record has its own matching filename and folder namespace. Helpers owned by one type stay nested. `App` uses the normal `App.xaml` / `App.xaml.cs` pair.
 
-`InputEngine` depends on `IPhoneInput`; `AimGesture` depends on the narrower `ITouchSink`. `DrivingModeMonitor` receives independent `IMirrorSurface` and `IPhoneFrameSource` ports. Their concrete implementations can be replaced without importing ADB or scrcpy into application input logic. The Windows focus, overlay and raw-input code remains Windows-specific.
+```text
+Domain/
+  Profiles/       Profile, Binding, DrivingLayout, KeyNames, Settings
+  Phones/         Devices, connection options, gestures, screenshots
+  Geometry/       ScreenPoint, ScreenRect, HudFrame
+  Detection/      DrivingHudDetector
+Application/
+  Ports/          One interface per file
+  Input/          InputEngine, AimGesture, MouseMotion, MouseWheelInput
+  Monitoring/     DrivingModeMonitor
+  Connection/     ConnectionPolicy
+Adapters/
+  Android/        ADB discovery, tools and AndroidPhoneSession
+  Ios/            WDA discovery, HTTP and IosPhoneSession
+  Windows/        Native interop, input, capture/decoding and drivers
+  Persistence/    JsonSettingsStore
+  Diagnostics/    Log and its application port adapter
+  Processes/      ProcessRunner
+  Configuration/  AppInfo
+Presentation/
+  Windows/        Dashboard, mapping overlay and iPhone viewer
+Composition/      Program, App.xaml and App.xaml.cs
+Tests/            Built-in regression suites
+```
 
-| Port in `PhonePorts.cs` | Application responsibility | Current adapter |
+Domain contains models and control rules. Application depends on Domain and its own ports. Phone and Windows adapters implement those ports; the Windows presentation supplies the interactive entry points. Composition creates the concrete implementations. The existing executable remains one assembly, while the architecture check compiles Domain and then Application in isolation against the .NET runtime to enforce inward dependencies.
+
+The dashboard is the application's entry adapter. It receives backend registrations containing factories, capabilities, address validation, setup instructions and vendor-driver adapters. `App.OnLaunched` in `Composition/App.xaml.cs` is the composition root: it registers `AndroidPhoneBackend` with `SamsungDriver`, and `IosPhoneBackend` without Android driver repair. The user selects the backend at runtime; changing it preserves profile/settings data. Adding another vendor driver does not change dashboard discovery or gameplay gestures.
+
+`InputEngine` receives `IPhoneInput`, `IDesktopInput` and `IApplicationLog`; `AimGesture` depends on the narrower `ITouchSink`. Focus, key polling, cursor confinement and timer resolution pass through the desktop port. `DrivingModeMonitor` receives independent mirror, PNG-source, capture, decoder and log ports, and owns its capture adapter until its worker stops. Application logic imports no Win32 or WinRT code. The iPhone backend receives a viewer factory from Composition; the viewer consumes display/gesture ports and lifecycle callbacks.
+
+| Port in `Application/Ports/` | Application responsibility | Current adapter |
 |---|---|---|
 | `IPhoneBackend` | Discover normalized devices; create an owned session | `AndroidPhoneBackend`, `IosPhoneBackend` |
-| `IPhoneSession` | Connection lifecycle, optional `RealtimeInput`, statistics, faults and geometry notifications | `DeviceSession` (Android), `IosPhoneSession` |
-| `IPhoneInput` / `ITouchSink` | Continuous normalized touches, release and Back | `DeviceSession`; absent from iPhone sessions |
+| `IPhoneSession` | Connection lifecycle, optional `RealtimeInput`, statistics, faults and geometry notifications | `AndroidPhoneSession` (Android), `IosPhoneSession` |
+| `IPhoneInput` / `ITouchSink` | Continuous normalized touches, release and Back | `AndroidPhoneSession`; absent from iPhone sessions |
 | `IPhoneDisplay` / `IMirrorSurface` | Gesture/display dimensions, native Windows window and texture pixels | Both backends; iPhone viewport points remain distinct from screenshot pixels |
 | `IPhoneFrameSource` | Cancellable encoded PNG capture | Bounded ADB screencap or WDA screenshot capture |
 | `IPhoneGestureInput` | Finite tap/swipe/long-press gestures and Home | `IosPhoneSession` through `IosWdaClient` |
 | `IUsbDriverSupport` | Vendor-specific missing-driver detection and verified installation | `SamsungDriver` |
+| `IDesktopInput` | Focus, key state, pointer position, viewport, confinement and timer resolution | `WindowsDesktopInput` |
+| `IMirrorCapture` / `IFrameDecoder` | Foreground mirror pixels and cancellable PNG decoding | `MirrorFrameCapture`, `WindowsPngDecoder` |
+| `ISettingsStore` | Load/save settings without persistence in domain models | `JsonSettingsStore`; existing JSON fields and migration behavior remain compatible |
+| `IApplicationLog` | Application diagnostics | `ApplicationLog` forwards to the rotating file/UI log |
+| `IPhoneGestureMirror` | Present point/pixel screenshots and own a finite-gesture viewer | `IosMirrorWindow` |
 
 `PhoneDevice.Id` is opaque to the application. The adapter supplies `PhoneDeviceState` and `PhoneTransport`; `ConnectionPolicy` automatically connects only one ready USB device. Android ID naming rules, including wireless discovery and emulator names, are interpreted inside `AndroidPhoneBackend`. `PhoneConnectionOptions` contains only stream preferences, so adapters do not receive mutable application settings or saved profiles.
 
@@ -35,6 +69,10 @@ The Android adapter owns its ADB serial, processes, remote JAR, allocated forwar
 5. Run the self-test and relevant backend tests, then validate a calibrated HUD on the actual phone separately. An interface alone cannot supply an operating system's missing remote-input permissions or transport.
 
 ## Regression evidence
+
+Run `scripts/Check-Architecture.ps1` before publishing. It verifies matching filenames/namespaces, one top-level type per file, independent compilation of each inner layer, and exclusion of direct file, process, HTTP-client and native-import operations from the core. Its own fixtures check that violations fail. CI, installer releases and portable publishing run this check.
+
+`DesktopInputTest.cs` runs the input engine through a simulated desktop, including 128 camera renewals with held fire, a new action, focus loss, discarded unfocused events and minimization. `SettingsStoreTest.cs` saves/loads an edited profile, persists the legacy sprint migration and checks recovery from invalid JSON in an isolated temporary directory.
 
 `PhonePortsTest.cs` drives the actual input/camera controllers through a simulated alternate backend without Android tools or a phone. It covers stream options, opaque IDs, another aspect ratio, 128 camera sweeps with held fire/scope, a new action afterward, geometry resets, driving transitions, Back and disconnect cleanup. Android discovery parsing and effective/invalid display sizes have local checks too.
 

@@ -16,20 +16,20 @@
     <SkipNamespace name="ABI*" />
     <SkipNamespace name="WinRT*" />
     <SkipNamespace name="Microsoft*" />
-    <SkipType name="PhoneControl.App" skipMethods="true" skipFields="true" skipProperties="true" skipEvents="true" skipStringHiding="true" />
-    <SkipType name="PhoneControl.Settings" skipMethods="true" skipFields="true" skipProperties="true" />
-    <SkipType name="PhoneControl.Profile" skipMethods="true" skipFields="true" skipProperties="true" />
-    <SkipType name="PhoneControl.Binding" skipMethods="true" skipFields="true" skipProperties="true" />
-    <SkipType name="PhoneControl.DrivingLayout" skipMethods="true" skipFields="true" skipProperties="true" />
-    <SkipType name="PhoneControl.DrivingHudDetector/Feature" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Composition.App" skipMethods="true" skipFields="true" skipProperties="true" skipEvents="true" skipStringHiding="true" />
+    <SkipType name="PhoneControl.Domain.Profiles.Settings" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Domain.Profiles.Profile" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Domain.Profiles.Binding" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Domain.Profiles.DrivingLayout" skipMethods="true" skipFields="true" skipProperties="true" />
+    <SkipType name="PhoneControl.Domain.Detection.DrivingHudDetector/Feature" skipMethods="true" skipFields="true" skipProperties="true" />
     <!-- P/Invoke metadata retains native entry points independently of managed names.
          Preserve native layout fields explicitly for inspection and interop. -->
-    <SkipType name="PhoneControl.Native*" skipMethods="true" skipFields="true" />
-    <SkipType name="PhoneControl.MappingOverlay/WindowClass" skipFields="true" />
-    <SkipType name="PhoneControl.MappingOverlay/Paint" skipFields="true" />
-    <SkipType name="PhoneControl.RawInputReader/Device" skipFields="true" />
-    <SkipType name="PhoneControl.MirrorFrameCapture/BitmapInfo" skipFields="true" />
-    <SkipType name="PhoneControl.DrivingDetectionTest/BitmapInfo" skipFields="true" />
-    <SkipType name="PhoneControl.DrivingDetectionTest/Message" skipFields="true" />
+    <SkipType name="PhoneControl.Adapters.Windows.Interop.Native*" skipMethods="true" skipFields="true" />
+    <SkipType name="PhoneControl.Presentation.Windows.MappingOverlay/WindowClass" skipFields="true" />
+    <SkipType name="PhoneControl.Presentation.Windows.MappingOverlay/Paint" skipFields="true" />
+    <SkipType name="PhoneControl.Adapters.Windows.Input.RawInputReader/Device" skipFields="true" />
+    <SkipType name="PhoneControl.Adapters.Windows.Capture.MirrorFrameCapture/BitmapInfo" skipFields="true" />
+    <SkipType name="PhoneControl.Tests.DrivingDetectionTest/BitmapInfo" skipFields="true" />
+    <SkipType name="PhoneControl.Tests.DrivingDetectionTest/Message" skipFields="true" />
   </Module>
 </Obfuscator>

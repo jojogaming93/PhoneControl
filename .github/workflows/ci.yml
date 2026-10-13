@@ -47,6 +47,7 @@ jobs:
       - name: Publish Windows application
         shell: pwsh
         run: |
+          ./scripts/Check-Architecture.ps1
           dotnet publish src/PhoneControl/PhoneControl.csproj -c Release -o artifacts/ci
           if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
       - name: Run iPhone protocol checks and full Android/iPhone suite
