@@ -1,12 +1,63 @@
 # Installation and distribution
 
-## Automatic GitHub release drafts
+## Release channels and installer automation
 
-**Implemented:** `.github/workflows/windows-installer.yml` builds and tests the setup `.exe`, then creates a GitHub release draft containing `PhoneControl-Setup-<version>-win-x64.exe`, its `.sha256`, `PhoneControl-<version>-source.zip` and the build manifest. Installer lifecycle failures prevent the release job from running; diagnostic Actions artifacts remain available. This product uses an EXE installer, not an MSI.
+**Implemented:** every successful push to `feature/*` (and `codex/*`), `main` or `release/<version>` builds, tests and publishes a downloadable installer. Branch builds are published GitHub prereleases; stable releases require an explicitly pushed version tag. Failed builds leave diagnostic Actions artifacts and do not publish an installer.
 
-Push a version tag such as `1.0.8` or `v1.0.8`, or choose **Actions → Build Windows installer and release → Run workflow** and enter `1.0.8`. Manual runs use the bare version as the release tag and target the selected source commit. A tag pointing to another commit is rejected. Re-running a version can refresh an existing draft; a published release is never overwritten. The existing published `1.0.7` prerelease is therefore left intact; use a new version for this workflow.
+| Source | Channel | Example display version | Installation |
+|---|---|---|---|
+| `feature/ios` | Alpha | `1.1.0-alpha.ios-4fe4d2554caf.1842.1` | PhoneControl Preview |
+| `main` | Beta | `1.1.0-beta.1843.1` | PhoneControl Preview |
+| `release/1.1.0` | RC | `1.1.0-rc.1844.1` | PhoneControl Preview |
+| Tag `v1.1.0` | Stable | `1.1.0` | PhoneControl |
 
-`scripts/New-GitHubRelease.ps1` checks the source commit, version and installer/source hashes before uploading. It uses the workflow's built-in GitHub token with `contents: write` confined to the release job. Draft assets are available to repository maintainers for review before publication.
+The final numbers are the unique GitHub Actions **run ID** and **attempt**, so retries and runs started by different workflows cannot collide. Feature names are normalized, bounded and suffixed with a hash of the full case-sensitive branch name. Similar names remain distinct. The build manifest records the full source SHA and branch. CI run IDs are release identifiers, not Windows numeric version components.
+
+`version.props` is the shared next-version source for development builds and feature/main pipelines. The current cycle targets **1.1.0**, including experimental iPhone support. Release branches obtain their target from their name; stable tags obtain theirs from the tag. Patch versions represent compatible fixes, minor versions compatible features, and major versions incompatible supported profile/public-contract changes. Published versions are immutable. See [Semantic Versioning](https://semver.org/).
+
+### Starting and finishing a release
+
+After these workflow files are merged into `main`, choose **Actions → Start release → Run workflow**, select `main`, and enter `1.1.0`. It creates `release/1.1.0` from the selected main commit and directly invokes the RC installer pipeline. This direct call is necessary because a branch push made by the built-in Actions token does not trigger another push workflow. Existing branches are not overwritten; use **Build Windows installer and release** on that branch to retry.
+
+Alternatively, use a checkout of the public repository:
+
+```powershell
+gh auth switch --hostname github.com --user jojogaming93
+git fetch origin main
+git switch -c release/1.1.0 origin/main
+git push --set-upstream origin release/1.1.0
+```
+
+Push stabilization fixes to the release branch; each push publishes a fresh RC. After testing an RC, tag its exact source commit:
+
+```powershell
+git tag v1.1.0 <accepted-RC-source-commit>
+git push origin v1.1.0
+```
+
+The stable pipeline rebuilds and validates that commit with the stable product identity and version, then publishes it as GitHub's Latest release. The preview and stable binaries differ in identity/version metadata, so this is a rebuild from accepted source rather than a relabeling of the RC executable. Keep all published tags fixed. Merge stabilization fixes back into main, and update `VersionPrefix` in `version.props` to the next intended version (for example `1.2.0` for another feature cycle).
+
+Manual **Build Windows installer and release** runs on a branch always produce previews; an optional target-version override is available and must match a selected release branch. Manual dispatch cannot publish a stable release. Legacy bare numeric tags such as `1.1.0` are supported, but new stable tags should use `v`. The existing `1.0.7` release and `1.0.8` draft remain untouched.
+
+### Stable and Preview coexistence
+
+Stable retains its existing installer AppId, default folder `%LOCALAPPDATA%\\Programs\\PhoneControl`, settings/log folder `%LOCALAPPDATA%\\PhoneControl`, shortcut names and instance identity. All alpha, beta and RC installers share a separate Preview AppId, `PhoneControl Preview` install/settings folders, Preview shortcuts and a separate mutex. Switching among preview builds upgrades the Preview installation and retains its mappings. Stable and Preview can be installed together; preview installation, repair and uninstall do not modify Stable settings or registration. Preview starts with its own starter profile; export/import mappings explicitly if wanted. It does not import or migrate Stable's edited settings.
+
+The app shows the full prerelease label and channel. Windows file/resource versions stay numeric, for example `1.1.0.0`, and assembly versions use `1.1.0.0` for that major/minor. Preview suffixes and CI IDs are informational versions, not numeric upgrade ordering across channels. Packaging and installed checks verify these fields. Parallel live phone sessions between the two installations have not been tested.
+
+### Pipeline gates, downloads and retention
+
+`ci.yml` performs source validation and ordinary Windows regression tests on branch pushes and pull requests. It has read-only permissions; pull requests never publish releases. Source generation uses Windows and pinned Python 3.14.3 because different zlib builds can produce different compressed PNG bytes for identical fixture pixels, while the audit requires exact fixture bytes.
+
+`release.yml` resolves the centralized branch/tag version and calls `windows-installer.yml`. The shared pipeline audits source and generated docs, checks release automation, builds the obfuscated app, runs its regression suite, builds the EXE installer, and tests installation, repair, uninstall, both channels' profile retention and version metadata. Each required check gates publication. Diagnostic artifacts include staging self-test results if installer compilation has not been reached.
+
+Each release contains the installer, SHA-256 checksum, corresponding readable source ZIP and build manifest. The Actions run summary links to its release. `New-GitHubRelease.ps1` verifies clean source identity, channel, installer identity and hashes. Assets are uploaded to a draft first, then published together. Failed draft uploads can be retried for the same commit; published assets are never overwritten. Stable releases require an existing matching tag and become Latest; previews do not become Latest. Builds use read-only tokens; publication, retention and branch creation use narrowly scoped write jobs. No extra token or certificate is needed.
+
+Retention keeps the latest **10 alpha builds per feature branch** and **20 main beta builds**, across target versions. It retains every RC and stable release. Cleanup selects only published prereleases created by GitHub Actions with matching structured PhoneControl release metadata, validated version/channel/branch and matching tags. It protects the just-published build, excludes drafts and human-created releases, and removes expired preview releases with their tags. It never rewrites a published version.
+
+Local `scripts/Test-ReleaseAutomation.ps1` tests Git/GitHub commands through mocks; it creates no remote resources. Installer lifecycle testing needs a disposable account/runner and refuses an existing installation of its target channel. Real iPhone acceptance remains unknown; mock protocol and installer checks do not substitute for device acceptance. See [verification evidence](verification.md).
+
+Primary automation references: [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows), [triggering workflows with the built-in token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow), [GitHub CLI releases](https://cli.github.com/manual/gh_release_create), and [Windows installer numeric versions](https://jrsoftware.org/ishelp/topic_setup_versioninfoversion.htm).
 
 ## Update 1.0.7 - PhoneControl name
 
@@ -82,15 +133,15 @@ The download is limited to 60 MB and three minutes. A mismatched download is del
 
 ```
 python docs/build.py
-pwsh -File scripts/Build-Installer.ps1 -Version 1.0.6
-pwsh -File scripts/Test-Installer.ps1 -Installer artifacts/releases/PhoneControl-Setup-1.0.6-win-x64.exe
+pwsh -File scripts/Build-Installer.ps1 -Version 1.1.0
+pwsh -File scripts/Test-Installer.ps1 -Version 1.1.0 -Installer artifacts/releases/PhoneControl-Setup-1.1.0-win-x64.exe
 ```
 
 Build prerequisites belong to maintainers: .NET 10 SDK, Visual Studio C++ x64 tools, Windows SDK and Internet access for missing pinned tools. The prebuilt Android JAR is committed; Java is needed only when changing/rebuilding that server. `Build-Installer.ps1` acquires hash- and publisher-verified Inno Setup 7.1.0 if needed and checks the installed compiler hash. It publishes into a unique staging folder, requires bundled scrcpy 4.1 instead of choosing an arbitrary PATH version, runs application self-tests, checks required runtime/tool/notices files, builds the Inno payload, and embeds it in a statically linked x64 launcher.
 
 The output directory `artifacts/releases` contains the public-facing `PhoneControl-Setup-…exe`, its corresponding `PhoneControl-…-source.zip`, a SHA-256 sidecar, and a JSON manifest with version, source commit/dirty state and per-payload-file hashes. The `PhoneControl-Payload-…exe` backend is a build intermediate; distribute the **Setup** executable with source access. Hashes detect accidental mismatches; download the installer and source from the project's release page.
 
-The **Build Windows installer and release** GitHub Actions workflow builds, lifecycle-tests and attaches these files to a release draft for review. Action revisions are pinned. A hosted CI machine has developer components installed, so it is not proof of clean-PC operation.
+The **Build Windows installer and release** GitHub Actions workflow builds, lifecycle-tests and publishes these files according to the channel rules above. Action revisions are pinned. A hosted CI machine has developer components installed, so it is not proof of clean-PC operation.
 
 ## Validation and release gates
 

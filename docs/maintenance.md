@@ -1,31 +1,34 @@
 # Maintenance and agent workflow
 
-**Current naming/version:** PhoneControl 1.0.7. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings.
+**Version:** published Stable is 1.0.7; the next target in `version.props` is 1.1.0. Build `src/PhoneControl/PhoneControl.csproj`; launch with `Launch-PhoneControl.ps1`. The matching control JAR and branding assets use lowercase `phonecontrol` filenames. The Android binary bytes are unchanged. The stable installer app ID enables saved-settings import from its previous registered directory; settings copies never overwrite the original or existing new settings. Preview has an independent identity and does not migrate Stable settings.
 
 ## Source map
 
 | Source | Responsibility |
 |---|---|
-| src/PhoneControl/Profile.cs | Starter layout, validation, key names, settings, sprint migration, log |
-| src/PhoneControl/PhonePorts.cs | Backend, session, input, mirror, capture and driver contracts |
-| src/PhoneControl/AndroidPhoneBackend.cs | Android device discovery, state/transport normalization and session factory |
-| src/PhoneControl/DeviceSession.cs | Android adapter: scrcpy version, ADB sessions, geometry, binary packets, cleanup |
-| src/PhoneControl/PhonePortsTest.cs | Simulated alternate backend and Android discovery/geometry regressions |
-| src/PhoneControl/IosPhoneBackend.cs | Experimental WDA discovery, owned session, capture/control serialization and cleanup |
-| src/PhoneControl/IosWdaClient.cs | Bounded WDA HTTP, point/pixel geometry and complete gesture packets |
-| src/PhoneControl/IosMirrorWindow.cs | Windows screenshot viewer, letterboxing, finite gestures and Home |
-| src/PhoneControl/IosBackendTest.cs | Local TCP WDA mock, synthetic PNGs and hardware-free protocol regression |
-| src/PhoneControl/InputEngine.cs | Focus, modes, keys/edges, tap timing, movement, action ownership |
-| src/PhoneControl/AimGesture.cs | Camera swipe envelope/renewal and raw-motion accumulator |
-| src/PhoneControl/RawInputReader.cs | WM_INPUT keyboard/mouse parsing and Alt differentiation |
-| src/PhoneControl/MappingOverlay.cs | Mapping markers, no-activate cursor-hiding overlay |
-| src/PhoneControl/Native.cs | Win32 methods, video rectangle, cursor/focus helpers |
-| src/PhoneControl/MainWindow.cs | WinUI dashboard, settings, profile editing and session lifecycle |
-| src/PhoneControl/SelfTest.cs | 40 deterministic/local TCP checks |
+| src/PhoneControl/Domain/Profiles/ | Separate profile, binding, driving layout, key names and settings data types |
+| src/PhoneControl/Application/Ports/ | Separate phone, desktop input, capture, decoding, settings and log interfaces |
+| src/PhoneControl/Adapters/Android/AndroidPhoneBackend.cs | Android device discovery, state/transport normalization and session factory |
+| src/PhoneControl/Adapters/Android/AndroidPhoneSession.cs | Android adapter: scrcpy version, ADB sessions, geometry, binary packets, cleanup |
+| src/PhoneControl/Tests/PhonePortsTest.cs | Simulated alternate backend and Android discovery/geometry regressions |
+| src/PhoneControl/Adapters/Ios/ | Separate WDA backend, session, client and status types |
+| src/PhoneControl/Adapters/Ios/IosWdaClient.cs | Bounded WDA HTTP, point/pixel geometry and complete gesture packets |
+| src/PhoneControl/Presentation/Windows/IosMirrorWindow.cs | Windows screenshot viewer, letterboxing, finite gestures and Home |
+| src/PhoneControl/Tests/IosBackendTest.cs | Local TCP WDA mock, synthetic PNGs and hardware-free protocol regression |
+| src/PhoneControl/Application/Input/InputEngine.cs | Focus, modes, keys/edges, tap timing, movement, action ownership |
+| src/PhoneControl/Application/Input/ | Input engine, camera gestures, mouse motion and wheel accumulation |
+| src/PhoneControl/Adapters/Windows/Input/RawInputReader.cs | WM_INPUT keyboard/mouse parsing and Alt differentiation |
+| src/PhoneControl/Presentation/Windows/MappingOverlay.cs | Mapping markers, no-activate cursor-hiding overlay |
+| src/PhoneControl/Adapters/Windows/Interop/Native.cs | Win32 methods, video rectangle, cursor/focus helpers |
+| src/PhoneControl/Presentation/Windows/MainWindow.cs | WinUI dashboard, settings, profile editing and session lifecycle |
+| src/PhoneControl/Tests/ | Built-in input, backend, capture, settings and desktop-port regression suites |
 | server/PointersState.java | Compatible Android local-ID rotation |
 | server/test/PointerStateTest.java | Real allocator regression with field-only Android test double |
 | scripts/Build-ControlServer.ps1 | Verified upstream source, Java/AIDL compilation, JVM checks, D8 JAR |
 | scripts/Publish.ps1 | Portable Windows output, scrcpy tools, notices, desktop shortcut |
+| scripts/Check-Architecture.ps1 | Compiler-backed inward dependencies and matching type/file/namespace checks |
+| src/PhoneControl/Adapters/Persistence/JsonSettingsStore.cs | JSON persistence and legacy settings migration |
+| src/PhoneControl/Composition/App.xaml.cs | Backend and host adapter registration |
 | docs/build.py | Offline website generator from these Markdown chapters and HUD JSON |
 
 ## Build the Windows app
@@ -36,6 +39,7 @@ The app targets x64 Windows, .NET 10 and WinUI 3 with Windows App SDK 2.5.1. `gl
 
 ```powershell
 .\Install-Dependencies.ps1
+.\scripts\Check-Architecture.ps1
 dotnet build .\src\PhoneControl\PhoneControl.csproj -c Release
 .\scripts\Publish.ps1 -DesktopShortcut
 ```
@@ -65,6 +69,10 @@ Oracle javapath shims can obscure the real JDK location. Supply `-Jdk` or let th
 
 scrcpy protocol/server versions are intentionally pinned. Updating only the renderer, server source or binary message layout is unsafe; update and test both control and video paths deliberately. Licensing/notices are in `THIRD-PARTY-NOTICES.md` and `server/LICENSE.scrcpy`; retain the modified-source header and redistributed notices.
 
+## Release maintenance
+
+Use `feature/*` for alpha installers, `main` for beta installers and `release/<major.minor.patch>` for RC installers. An explicit stable version tag publishes the stable installer. `version.props` holds the next target version (currently 1.1.0). [Distribution and pipelines](distribution.md) describes automation, separate Stable/Preview installs, acceptance gates and retention. Run `./scripts/Test-ReleaseAutomation.ps1` locally to verify version generation, publication, immutable assets, source checksums and bounded cleanup with mocked Git/GitHub commands. `Test-Installer.ps1` now requires `-Version` to select the right product identity. Workflow scripts and `version.props` are included in the source archive. Workflow availability on main requires merging their changes there first.
+
 ## Documentation workflow
 
 End-user distribution now has a self-contained installer and native launcher. Read [distribution.md](distribution.md) before changing release packaging, Windows support, device onboarding or driver repair. Build with `scripts/Build-Installer.ps1`; lifecycle-test in a disposable account/VM with `scripts/Test-Installer.ps1`. The test intentionally refuses to overwrite an existing registered installation. Keep application settings outside the installed folder and retain them during uninstall.
@@ -88,10 +96,10 @@ The current implementation does touch translation and screen streaming. It does 
 
 ## Driving and overlay source additions - 11 October 2026
 
-- `src/PhoneControl/DrivingHudDetector.cs`: visual arrow classification and hysteresis.
-- `src/PhoneControl/DrivingModeMonitor.cs`: cancellable background capture/decode loop.
-- `src/PhoneControl/MirrorFrameCapture.cs`: reusable foreground mirror capture for fast detection.
-- `src/PhoneControl/DrivingDetectionTest.cs`: worker timing/fallback/cancellation and real GDI fixture regressions.
+- `src/PhoneControl/Domain/Detection/DrivingHudDetector.cs`: visual arrow classification and hysteresis.
+- `src/PhoneControl/Application/Monitoring/DrivingModeMonitor.cs`: cancellable background capture/decode loop.
+- `src/PhoneControl/Adapters/Windows/Capture/MirrorFrameCapture.cs`: reusable foreground mirror capture for fast detection.
+- `src/PhoneControl/Tests/DrivingDetectionTest.cs`: worker timing/fallback/cancellation and real GDI fixture regressions.
 - `assets/reference-driving-hud.json`: embedded templates sampled from the observed example car screenshot.
 - `docs/fixtures/`: account-free synthetic classifier/capture inputs; generated by `docs/generate_fixtures.py`.
 

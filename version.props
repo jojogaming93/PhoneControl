@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Next development release. Release branches and stable tags override this. -->
+    <VersionPrefix>1.1.0</VersionPrefix>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,56 @@
+name: Start release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New release branch version (major.minor.patch)
+        required: true
+        default: '1.1.0'
+permissions:
+  contents: read
+jobs:
+  branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.branch.outputs.version }}
+      tag: ${{ steps.branch.outputs.tag }}
+      branch: ${{ steps.branch.outputs.branch }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Create release branch from the selected main commit
+        id: branch
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          INPUT_VERSION: ${{ inputs.version }}
+          CI_RUN_ID: ${{ github.run_id }}
+          CI_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if ($env:REF_TYPE -ne 'branch' -or $env:REF_NAME -ne 'main') { throw 'Run Start release on main.' }
+          $identity = ./scripts/Get-ReleaseIdentity.ps1 -Version $env:INPUT_VERSION
+          if ($identity.IsPreview) { throw 'Start release requires a plain major.minor.patch target.' }
+          $branch = "release/$($identity.BaseVersion)"
+          $release = ./scripts/Resolve-ReleaseVersion.ps1 -EventName workflow_dispatch -RefType branch -RefName $branch -RunId $env:CI_RUN_ID -RunAttempt $env:CI_RUN_ATTEMPT
+          $request = Join-Path $env:RUNNER_TEMP 'release-ref.json'
+          @{ ref = "refs/heads/$branch"; sha = $env:GITHUB_SHA } | ConvertTo-Json | Set-Content -LiteralPath $request -Encoding utf8
+          gh api --method POST "repos/$env:GITHUB_REPOSITORY/git/refs" --input $request
+          if ($LASTEXITCODE -ne 0) { throw 'Release branch creation failed. For an existing branch, run Build Windows installer and release on that branch.' }
+          "version=$($release.Version)" >> $env:GITHUB_OUTPUT
+          "tag=$($release.Tag)" >> $env:GITHUB_OUTPUT
+          "branch=$branch" >> $env:GITHUB_OUTPUT
+  installer:
+    needs: branch
+    permissions:
+      contents: write
+    uses: ./.github/workflows/windows-installer.yml
+    with:
+      version: ${{ needs.branch.outputs.version }}
+      tag: ${{ needs.branch.outputs.tag }}
+      commit: ${{ github.sha }}
+      source_branch: ${{ needs.branch.outputs.branch }}

@@ -6,13 +6,13 @@ PhoneControl uses WinUI 3 / .NET 10 for settings and native Win32 input/overlay 
 
 The control path is: Windows Raw Input and key state → InputEngine's 8 ms tick → independent logical fingers → 32-byte touch packets on one persistent TCP stream → loopback ADB forward over USB → Android server → MotionEvent injection → foreground Android application.
 
-The application consumes phone input, lifecycle, capture and discovery ports. `AndroidPhoneBackend` and `DeviceSession` implement the current ADB/scrcpy adapter; vendor driver repair is registered separately. See [phone backend architecture](architecture.md) for contracts and extension guidance. Display geometry comes from the selected phone's effective `wm size`; invalid dimensions abort connection instead of using a handset-specific fallback.
+The application consumes phone input, lifecycle, capture and discovery ports. `AndroidPhoneBackend` and `AndroidPhoneSession` implement the current ADB/scrcpy adapter; vendor driver repair is registered separately. See [phone backend architecture](architecture.md) for contracts and extension guidance. Display geometry comes from the selected phone's effective `wm size`; invalid dimensions abort connection instead of using a handset-specific fallback.
 
 No per-key `adb shell input` process is used for gameplay. ADB shell commands are useful for setup/probes but are not the low-latency multitouch transport. The control socket uses NoDelay and a 250 ms send timeout. Serialized writes share a lock; there is no parallel touch writer reordering packets.
 
 ## Starting the control session
 
-`DeviceSession.Connect` requires scrcpy version exactly 4.1. It obtains display size using `wm size`, generates a unique session ID, pushes `assets/phonecontrol-control.jar` under an app-owned name in `/data/local/tmp`, and creates a `tcp:0` ADB forward to `localabstract:scrcpy_<hex-session-id>`.
+`AndroidPhoneSession.Connect` requires scrcpy version exactly 4.1. It obtains display size using `wm size`, generates a unique session ID, pushes `assets/phonecontrol-control.jar` under an app-owned name in `/data/local/tmp`, and creates a `tcp:0` ADB forward to `localabstract:scrcpy_<hex-session-id>`.
 
 Conceptual command shape, using the actual selected device and session values:
 
@@ -25,7 +25,7 @@ adb -s <serial> shell CLASSPATH=<remote-jar> app_process / com.genymobile.scrcpy
   power_on=false cleanup=false
 ```
 
-These are command shapes; the multiline server example is not a ready-to-paste shell invocation. Consult `DeviceSession.cs` for the actual ArgumentList construction and `0x` formatting. The PC connects to the allocated loopback port and consumes the initial zero dummy byte. It drains the server's outgoing control messages asynchronously.
+These are command shapes; the multiline server example is not a ready-to-paste shell invocation. Consult `AndroidPhoneSession.cs` for the actual ArgumentList construction and `0x` formatting. The PC connects to the allocated loopback port and consumes the initial zero dummy byte. It drains the server's outgoing control messages asynchronously.
 
 The renderer is a different scrcpy session with `--no-control --video-codec=h264 --max-fps=120 --max-size=1920 --video-bit-rate=16M --video-buffer=0 --print-fps --shortcut-mod=rsuper`. Audio uses `--audio-buffer=30` or is disabled. The cap/size/bitrate are settings, not immutable constants.
 

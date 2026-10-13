@@ -1,0 +1,48 @@
+name: Build Windows installer and release
+on:
+  push:
+    branches: [main, 'feature/**', 'codex/**', 'release/**']
+    tags: ['[0-9]*.[0-9]*.[0-9]*', 'v[0-9]*.[0-9]*.[0-9]*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional target version override; blank uses version.props or release/version
+        required: false
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      branch: ${{ steps.version.outputs.branch }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Resolve branch or tag version
+        id: version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          CI_RUN_ID: ${{ github.run_id }}
+          CI_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          $release = ./scripts/Resolve-ReleaseVersion.ps1 -EventName $env:EVENT_NAME -RefType $env:REF_TYPE -RefName $env:REF_NAME -InputVersion $env:INPUT_VERSION -RunId $env:CI_RUN_ID -RunAttempt $env:CI_RUN_ATTEMPT
+          "version=$($release.Version)" >> $env:GITHUB_OUTPUT
+          "tag=$($release.Tag)" >> $env:GITHUB_OUTPUT
+          "branch=$($release.SourceBranch)" >> $env:GITHUB_OUTPUT
+  installer:
+    needs: resolve
+    permissions:
+      contents: write
+    uses: ./.github/workflows/windows-installer.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+      tag: ${{ needs.resolve.outputs.tag }}
+      commit: ${{ github.sha }}
+      source_branch: ${{ needs.resolve.outputs.branch }}

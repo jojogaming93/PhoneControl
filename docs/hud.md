@@ -4,7 +4,7 @@
 
 All coordinates below are normalized fractions of the visible phone image: top-left is `(0,0)`, bottom-right is `(1,1)`. They are not Windows desktop coordinates or fractions of a title bar/window border. This capture was 2340 × 1080 physical landscape pixels. The rendered texture was 1920 × 886 after the maximum-edge setting.
 
-`DeviceSession.Touch` converts normalized coordinates to physical injection pixels with `round(x * (W - 1))` and `round(y * (H - 1))`. The packet carries the physical W/H, not the texture dimensions. Windows pointer coordinates first have to be converted relative to the actual letterboxed video rectangle.
+`AndroidPhoneSession.Touch` converts normalized coordinates to physical injection pixels with `round(x * (W - 1))` and `round(y * (H - 1))`. The packet carries the physical W/H, not the texture dimensions. Windows pointer coordinates first have to be converted relative to the actual letterboxed video rectangle.
 
 Use `Native.VideoRect` when mapping desktop clicks. Preserve the image aspect ratio in a documentation overlay. A 1080 × 2340 natural display becomes 2340 × 1080 in landscape; geometry changes release touches before adopting the new dimensions.
 
